@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, XCircle, HelpCircle, Info } from "lucide-react";
+import { useUser } from "@/contexts/UserContext";
+import { UserProfileButton } from "@/components/UserProfileButton";
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -26,6 +28,17 @@ interface WritingPrompt {
   rejected: string;
   upvotes_chosen: number;
   upvotes_rejected: number;
+  timestamp_chosen: number;
+  timestamp_rejected: number;
+}
+
+interface UserFeedback {
+  id?: string;
+  user_id: string;
+  prompt_id: string;
+  selected_text: string;
+  is_correct: boolean;
+  created_at?: string;
 }
 
 export default function Home() {
@@ -45,37 +58,95 @@ export default function Home() {
   });
   const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
+  const [rationaleError, setRationaleError] = useState<string | null>(null);
+  const [pendingScoreUpdate, setPendingScoreUpdate] = useState<boolean | null>(
+    null
+  );
+  const [showUpvotes, setShowUpvotes] = useState(false);
 
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
 
+  const { user, profile, incrementScore, addViewedPrompt } = useUser();
+
+  // Load score from localStorage on initial render
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedScore = localStorage.getItem("writingEvalScore");
+      if (savedScore) {
+        try {
+          const parsedScore = JSON.parse(savedScore);
+          setScore(parsedScore);
+        } catch (e) {
+          console.error("Error parsing saved score:", e);
+        }
+      }
+    }
+  }, []);
+
+  // Update score from profile when user logs in
+  useEffect(() => {
+    if (user && profile) {
+      // If user is logged in, use their profile score
+      const totalSeen = profile.viewed_prompts?.length || 0;
+      setScore((prev) => ({
+        correct: profile.score || 0,
+        total: Math.max(totalSeen, prev.total), // Use the larger of the two totals
+      }));
+    }
+  }, [user, profile]);
+
   const fetchRandomPrompt = async () => {
     setError(null);
+    setIsLoading(true);
+
     try {
-      const { data, error } = await supabase
+      // First, get the count of all prompts
+      const countResult = await supabase
+        .from("writingprompts-pairwise-test")
+        .select("*", { count: "exact", head: true });
+
+      if (countResult.error) {
+        throw new Error(countResult.error.message || "Failed to count prompts");
+      }
+
+      const count = countResult.count || 0;
+      if (count === 0) {
+        setError("No prompts available. Please try again later.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Get a random prompt using the count
+      const randomOffset = Math.floor(Math.random() * count);
+
+      // Get a random prompt
+      const { data: initialData, error } = await supabase
         .from("writingprompts-pairwise-test")
         .select("*")
-        .limit(1)
-        .order("id", { ascending: true }) // Order by id first
-        .then((result) => {
-          if (result.error) throw result.error;
-          // Get total count for random offset
-          return supabase
-            .from("writingprompts-pairwise-test")
-            .select("*", { count: "exact" })
-            .limit(1)
-            .single();
-        })
-        .then((result) => {
-          if (result.error) throw result.error;
-          const count = result.count || 0;
-          const randomOffset = Math.floor(Math.random() * count);
-          return supabase
-            .from("writingprompts-pairwise-test")
-            .select("*")
-            .range(randomOffset, randomOffset)
-            .single();
-        });
+        .range(randomOffset, randomOffset)
+        .single();
+
+      // Use a separate variable for data that can be reassigned
+      let data = initialData;
+
+      // If user is logged in and we got a prompt they've already seen, try to get another one
+      if (data && user && profile?.viewed_prompts?.includes(data.id)) {
+        // Try to get a prompt they haven't seen yet
+        const { data: unseenData, error: unseenError } = await supabase
+          .from("writingprompts-pairwise-test")
+          .select("*")
+          .not("id", "in", profile.viewed_prompts)
+          .limit(1);
+
+        if (!unseenError && unseenData && unseenData.length > 0) {
+          // Use the unseen prompt instead
+          data = unseenData[0];
+        }
+        // If we couldn't find an unseen prompt, we'll use the original random one
+      }
 
       if (error) {
         const errorMessage =
@@ -84,6 +155,13 @@ export default function Home() {
             : `Database error: ${error.message}`;
         setError(errorMessage);
         console.error("Error details:", error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data) {
+        setError("No prompt found. Please try again.");
+        setIsLoading(false);
         return;
       }
 
@@ -101,14 +179,25 @@ export default function Home() {
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
       if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
+
+      // If user is logged in, mark this prompt as viewed
+      if (user && data.id) {
+        addViewedPrompt(data.id);
+      }
     } catch (error) {
-      setError("Failed to fetch prompt. Please try again.");
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      setError(`Failed to fetch prompt: ${errorMessage}`);
       console.error("Error fetching prompt:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchRandomPrompt();
+    // Include fetchRandomPrompt in the dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSelection = (text: string) => {
@@ -116,7 +205,7 @@ export default function Home() {
     setPendingSelection(text);
   };
 
-  const confirmSelection = () => {
+  const confirmSelection = async () => {
     if (!pendingSelection || !prompt) return;
 
     const isChosen = pendingSelection === prompt.chosen;
@@ -127,19 +216,121 @@ export default function Home() {
         isChosen ? prompt.upvotes_chosen : prompt.upvotes_rejected
       } upvotes.`,
     });
-    setScore((prev) => ({
-      correct: prev.correct + (isChosen ? 1 : 0),
-      total: prev.total + 1,
-    }));
+
+    // Update local score
+    const newScore = {
+      correct: score.correct + (isChosen ? 1 : 0),
+      total: score.total + 1,
+    };
+    setScore(newScore);
+
+    // Save score to localStorage for non-logged-in users
+    if (typeof window !== "undefined" && !user) {
+      localStorage.setItem("writingEvalScore", JSON.stringify(newScore));
+    }
+
+    // Store whether this selection was correct for later backend update
+    setPendingScoreUpdate(isChosen);
+
+    // If user is logged in, save their feedback
+    if (user && prompt.id) {
+      try {
+        const feedbackData: UserFeedback = {
+          user_id: user.id,
+          prompt_id: prompt.id,
+          selected_text: pendingSelection,
+          is_correct: isChosen,
+        };
+
+        await supabase.from("user_feedback").insert(feedbackData);
+      } catch (error) {
+        console.error("Error saving feedback:", error);
+      }
+    }
+
     setPendingSelection(null);
+    setShowUpvotes(false); // Reset upvotes visibility
     setShowRationale(true);
   };
 
-  const handleNextPrompt = () => {
+  const handleNextPrompt = async () => {
+    // Update backend score if there's a pending update and the user is logged in
+    if (user && pendingScoreUpdate === true) {
+      try {
+        await incrementScore();
+      } catch (error) {
+        console.error("Error updating score:", error);
+      }
+    }
+
+    // Reset states
     setSelectedText(null);
     setFeedback(null);
     setRationale("");
+    setPendingScoreUpdate(null);
+    setShowUpvotes(false);
+
+    // Fetch next prompt
     fetchRandomPrompt();
+  };
+
+  const saveRationale = async () => {
+    if (!prompt || !rationale.trim()) return;
+
+    setIsSubmittingRationale(true);
+    setRationaleError(null);
+
+    try {
+      // Check if user is authenticated for RLS policies
+      if (!user) {
+        // For anonymous users, we'll show a message that login is required
+        setRationaleError(
+          "You need to be logged in to submit rationales. Please log in and try again."
+        );
+        setIsSubmittingRationale(false);
+        return;
+      }
+
+      // Determine if the user's selection was correct
+      const isCorrect = selectedText === prompt.chosen;
+
+      const { error: insertError } = await supabase.from("rationales").insert({
+        prompt_id: prompt.id,
+        rationale: rationale.trim(),
+        user_id: user.id,
+        is_correct: isCorrect,
+      });
+
+      if (insertError) {
+        // Handle specific RLS policy violation
+        if (insertError.message?.includes("row-level security")) {
+          throw new Error(
+            "Permission denied: You don't have access to submit rationales."
+          );
+        }
+        throw new Error(insertError.message || "Failed to save rationale");
+      }
+
+      // Show upvotes after successful submission
+      setShowUpvotes(true);
+
+      // Close the rationale dialog
+      setShowRationale(false);
+      setRationale(""); // Clear the rationale for next time
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      setRationaleError(`Failed to save rationale: ${errorMessage}`);
+      console.error("Error saving rationale:", error);
+    } finally {
+      setIsSubmittingRationale(false);
+    }
+  };
+
+  // Function to handle skipping rationale
+  const handleSkipRationale = () => {
+    setShowUpvotes(true);
+    setShowRationale(false);
   };
 
   return (
@@ -196,31 +387,50 @@ export default function Home() {
             <div className="flex flex-col gap-4">
               <h3 className="text-lg font-medium">Add Your Rationale</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Optionally, we encourage you to add rationale for why you
-                selected this response.
+                {user
+                  ? "We encourage you to add rationale for why you selected this response."
+                  : "Please log in to submit your rationale. Your insights help us improve our understanding of quality writing."}
               </p>
               <textarea
                 className="w-full h-32 p-3 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={rationale}
                 onChange={(e) => setRationale(e.target.value)}
-                placeholder="Enter your thoughts here..."
+                placeholder={
+                  user
+                    ? "Enter your thoughts here..."
+                    : "Log in to share your thoughts..."
+                }
+                disabled={isSubmittingRationale || !user}
               />
+              {rationaleError && (
+                <div className="text-sm text-red-600 dark:text-red-400">
+                  {rationaleError}
+                </div>
+              )}
               <div className="flex justify-end gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => setShowRationale(false)}
+                  onClick={handleSkipRationale}
                   className="transform transition-all hover:scale-105 active:scale-95"
+                  disabled={isSubmittingRationale}
                 >
                   Skip
                 </Button>
                 <Button
-                  onClick={() => {
-                    // Here you could save the rationale if needed
-                    setShowRationale(false);
-                  }}
+                  onClick={saveRationale}
                   className="transform transition-all hover:scale-105 active:scale-95"
+                  disabled={isSubmittingRationale || !user}
                 >
-                  Submit
+                  {isSubmittingRationale ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                      <span>Submitting...</span>
+                    </div>
+                  ) : !user ? (
+                    "Log in to Submit"
+                  ) : (
+                    "Submit"
+                  )}
                 </Button>
               </div>
             </div>
@@ -249,6 +459,7 @@ export default function Home() {
             >
               <HelpCircle className="h-5 w-5" />
             </Button>
+            <UserProfileButton />
           </div>
         </div>
 
@@ -300,7 +511,11 @@ export default function Home() {
           )}
         </div>
 
-        {prompt && (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          </div>
+        ) : prompt ? (
           <Card className="w-full p-6">
             <div className="mb-4">
               <div className="text-sm font-medium text-blue-600 mb-2">
@@ -317,22 +532,26 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Text */}
               <div className="flex flex-col gap-4">
-                {selectedText && texts.left === prompt.chosen && (
-                  <Alert className="bg-green-50 dark:bg-green-950 flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <AlertDescription>
-                      {prompt.upvotes_chosen} upvotes
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {selectedText && texts.left === prompt.rejected && (
-                  <Alert className="bg-red-50 dark:bg-red-950 flex items-center gap-3">
-                    <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    <AlertDescription>
-                      {prompt.upvotes_rejected} upvotes
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {selectedText &&
+                  showUpvotes &&
+                  texts.left === prompt.chosen && (
+                    <Alert className="bg-green-50 dark:bg-green-950 flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <AlertDescription>
+                        {prompt.upvotes_chosen} upvotes
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                {selectedText &&
+                  showUpvotes &&
+                  texts.left === prompt.rejected && (
+                    <Alert className="bg-red-50 dark:bg-red-950 flex items-center gap-3">
+                      <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <AlertDescription>
+                        {prompt.upvotes_rejected} upvotes
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 <Card
                   className={`p-4 transition-all hover:shadow-lg transform ${
                     selectedText
@@ -358,22 +577,26 @@ export default function Home() {
 
               {/* Right Text */}
               <div className="flex flex-col gap-4">
-                {selectedText && texts.right === prompt.chosen && (
-                  <Alert className="bg-green-50 dark:bg-green-950 flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <AlertDescription>
-                      {prompt.upvotes_chosen} upvotes
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {selectedText && texts.right === prompt.rejected && (
-                  <Alert className="bg-red-50 dark:bg-red-950 flex items-center gap-3">
-                    <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    <AlertDescription>
-                      {prompt.upvotes_rejected} upvotes
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {selectedText &&
+                  showUpvotes &&
+                  texts.right === prompt.chosen && (
+                    <Alert className="bg-green-50 dark:bg-green-950 flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <AlertDescription>
+                        {prompt.upvotes_chosen} upvotes
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                {selectedText &&
+                  showUpvotes &&
+                  texts.right === prompt.rejected && (
+                    <Alert className="bg-red-50 dark:bg-red-950 flex items-center gap-3">
+                      <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <AlertDescription>
+                        {prompt.upvotes_rejected} upvotes
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 <Card
                   className={`p-4 transition-all hover:shadow-lg transform ${
                     selectedText
@@ -398,7 +621,7 @@ export default function Home() {
               </div>
             </div>
           </Card>
-        )}
+        ) : null}
       </div>
     </div>
   );
