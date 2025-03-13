@@ -126,7 +126,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen p-8 flex flex-col items-center gap-8 relative">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col items-center gap-8 relative">
       {/* Help Modal */}
       {showHelp && (
         <div
@@ -146,12 +146,12 @@ export default function Home() {
         </div>
       )}
 
-      <div className="w-full max-w-4xl">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-medium tracking-tight">
+      <div className="w-full max-w-6xl">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0 mb-4">
+          <h1 className="text-2xl font-medium tracking-tight text-center sm:text-left">
             Creative Writing Evaluation Arena 📝
           </h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center sm:justify-end gap-4">
             <div className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full shadow-sm">
               <div className="text-white text-sm font-medium">
                 Score: <span className="text-base">{score.correct}</span>
