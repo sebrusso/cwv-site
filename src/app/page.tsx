@@ -36,7 +36,6 @@ export default function Home() {
     correct: boolean;
     message: string;
   } | null>(null);
-  const [isRandomized, setIsRandomized] = useState<boolean>(false);
   const [texts, setTexts] = useState<{ left: string; right: string }>({
     left: "",
     right: "",
@@ -95,7 +94,6 @@ export default function Home() {
         left: isChosenLeft ? data.chosen : data.rejected,
         right: isChosenLeft ? data.rejected : data.chosen,
       });
-      setIsRandomized(true);
 
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
