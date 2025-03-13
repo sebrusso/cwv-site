@@ -36,6 +36,9 @@ export default function Home() {
     correct: boolean;
     message: string;
   } | null>(null);
+  const [pendingSelection, setPendingSelection] = useState<string | null>(null);
+  const [showRationale, setShowRationale] = useState(false);
+  const [rationale, setRationale] = useState("");
   const [texts, setTexts] = useState<{ left: string; right: string }>({
     left: "",
     right: "",
@@ -110,9 +113,14 @@ export default function Home() {
 
   const handleSelection = (text: string) => {
     if (selectedText || !prompt) return;
+    setPendingSelection(text);
+  };
 
-    setSelectedText(text);
-    const isChosen = text === prompt.chosen;
+  const confirmSelection = () => {
+    if (!pendingSelection || !prompt) return;
+
+    const isChosen = pendingSelection === prompt.chosen;
+    setSelectedText(pendingSelection);
     setFeedback({
       correct: isChosen,
       message: `${isChosen ? "Correct!" : "Incorrect!"} This text received ${
@@ -123,6 +131,15 @@ export default function Home() {
       correct: prev.correct + (isChosen ? 1 : 0),
       total: prev.total + 1,
     }));
+    setPendingSelection(null);
+    setShowRationale(true);
+  };
+
+  const handleNextPrompt = () => {
+    setSelectedText(null);
+    setFeedback(null);
+    setRationale("");
+    fetchRandomPrompt();
   };
 
   return (
@@ -142,6 +159,71 @@ export default function Home() {
               see if we can blindly evaluate better creative writing, using
               upvotes as a ground truth.
             </p>
+          </Card>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {pendingSelection && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Card className="w-full max-w-sm p-6">
+            <div className="flex flex-col gap-4">
+              <h3 className="text-lg font-medium">Confirm your selection?</h3>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setPendingSelection(null)}
+                  className="transform transition-all hover:scale-105 active:scale-95"
+                >
+                  Keep Reading
+                </Button>
+                <Button
+                  onClick={confirmSelection}
+                  className="transform transition-all hover:scale-105 active:scale-95"
+                >
+                  Confirm
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Rationale Dialog */}
+      {showRationale && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Card className="w-full max-w-lg p-6">
+            <div className="flex flex-col gap-4">
+              <h3 className="text-lg font-medium">Add Your Rationale</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Optionally, we encourage you to add rationale for why you
+                selected this response.
+              </p>
+              <textarea
+                className="w-full h-32 p-3 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={rationale}
+                onChange={(e) => setRationale(e.target.value)}
+                placeholder="Enter your thoughts here..."
+              />
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRationale(false)}
+                  className="transform transition-all hover:scale-105 active:scale-95"
+                >
+                  Skip
+                </Button>
+                <Button
+                  onClick={() => {
+                    // Here you could save the rationale if needed
+                    setShowRationale(false);
+                  }}
+                  className="transform transition-all hover:scale-105 active:scale-95"
+                >
+                  Submit
+                </Button>
+              </div>
+            </div>
           </Card>
         </div>
       )}
@@ -172,30 +254,30 @@ export default function Home() {
 
         {/* Score and Feedback Banner */}
         <div className="flex flex-col gap-2 sticky top-0 bg-white dark:bg-gray-900 z-10 pb-2">
-          {selectedText ? (
+          {selectedText && !showRationale && feedback ? (
             <div
               className={`w-full p-4 rounded-lg flex justify-between items-center ${
-                feedback?.correct
+                feedback.correct
                   ? "bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-200"
                   : "bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200"
               }`}
             >
               <div className="flex items-center gap-2">
-                {feedback?.correct ? (
+                {feedback.correct ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 ) : (
                   <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                 )}
                 <span className="font-normal">
-                  {feedback?.correct
+                  {feedback.correct
                     ? "You chose correctly!"
                     : "You chose incorrectly!"}
                 </span>
               </div>
               <Button
-                onClick={fetchRandomPrompt}
+                onClick={handleNextPrompt}
                 className={`${
-                  feedback?.correct
+                  feedback.correct
                     ? "bg-green-600 hover:bg-green-700"
                     : "bg-red-600 hover:bg-red-700"
                 } text-white transform transition-all hover:scale-105 active:scale-95`}
