@@ -20,6 +20,10 @@ export function UserProfileButton() {
     setIsOpen(false);
   };
 
+  const handleClosePopover = () => {
+    setIsOpen(false);
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -64,7 +68,7 @@ export function UserProfileButton() {
             </Button>
           </div>
         ) : (
-          <LoginForm />
+          <LoginForm onClose={handleClosePopover} />
         )}
       </PopoverContent>
     </Popover>

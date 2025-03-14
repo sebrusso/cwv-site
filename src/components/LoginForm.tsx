@@ -4,97 +4,72 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@/contexts/UserContext";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle2 } from "lucide-react";
 
-export function LoginForm() {
+interface LoginFormProps {
+  onClose?: () => void;
+}
+
+export function LoginForm({ onClose }: LoginFormProps) {
   const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const { signIn } = useUser();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!email) return;
-
-    setIsSubmitting(true);
-    setMessage(null);
+    setIsLoading(true);
+    setError(null);
 
     try {
       const { error } = await signIn(email);
 
       if (error) {
-        setMessage({ type: "error", text: error.message });
+        setError(error.message);
       } else {
-        setMessage({
-          type: "success",
-          text: "Check your email for the login link!",
-        });
-        setEmail("");
+        setSuccess(true);
       }
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "An error occurred during sign in.";
-
-      setMessage({
-        type: "error",
-        text: errorMessage,
-      });
+    } catch (err) {
+      setError("An unexpected error occurred");
+      console.error(err);
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md space-y-4 p-4">
-      <div className="text-center">
-        <h2 className="text-lg font-semibold">Sign in with Magic Link</h2>
-        <p className="text-sm text-gray-500">
-          We&apos;ll email you a magic link for password-free sign in
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setEmail(e.target.value)
-            }
-            required
-            className="w-full"
-          />
+    <div className="p-4">
+      {success ? (
+        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+          <CheckCircle2 className="h-12 w-12 text-green-500" />
+          <p className="text-sm">Magic link was sent, check your email.</p>
+          <Button className="w-full" onClick={onClose}>
+            Ok
+          </Button>
         </div>
-
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={isSubmitting || !email}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sending...
-            </>
-          ) : (
-            "Send Magic Link"
-          )}
-        </Button>
-      </form>
-
-      {message && (
-        <Alert variant={message.type === "error" ? "destructive" : "default"}>
-          {message.type === "error" && <AlertCircle className="h-4 w-4" />}
-          <AlertDescription>{message.text}</AlertDescription>
-        </Alert>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Email</div>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-background border-t-transparent" />
+            ) : (
+              "Send magic link"
+            )}
+          </Button>
+        </form>
       )}
     </div>
   );
