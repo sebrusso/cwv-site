@@ -95,10 +95,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string) => {
     setIsLoading(true);
     try {
+      // Use NEXT_PUBLIC_SITE_URL environment variable if available, otherwise fall back to window.location.origin
+      const redirectUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}`,
+          emailRedirectTo: redirectUrl,
         },
       });
       return { error: error as AuthError };
