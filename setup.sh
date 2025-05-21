@@ -35,9 +35,9 @@ pnpm config set strict-ssl true # Default, but good to ensure
 echo "Listing current pnpm configuration:"
 pnpm config list
 
-echo "Testing network connectivity to npm registry via curl..."
-# Using -I to get headers, -s for silent, -S to show error, -v for verbose
-curl -vIs https://registry.npmjs.org
+# echo "Testing network connectivity to npm registry via curl..."
+# # Using -I to get headers, -s for silent, -S to show error, -v for verbose
+# curl -vIs https://registry.npmjs.org
 
 # Ensure pnpm is available (the universal image might have it, but this is safer)
 # Consider uncommenting if pnpm version is an issue or if it's not found
