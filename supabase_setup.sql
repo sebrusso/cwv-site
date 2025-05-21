@@ -1,4 +1,17 @@
--- Enable Row Level Security (RLS)
+-- Create "writingprompts-pairwise-test" table
+CREATE TABLE IF NOT EXISTS "writingprompts-pairwise-test" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  prompt TEXT NOT NULL,
+  chosen TEXT,
+  rejected TEXT,
+  timestamp_chosen TIMESTAMPTZ,
+  timestamp_rejected TIMESTAMPTZ,
+  upvotes_chosen INTEGER,
+  upvotes_rejected INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS) on "writingprompts-pairwise-test"
 ALTER TABLE "writingprompts-pairwise-test" ENABLE ROW LEVEL SECURITY;
 
 -- Create profiles table
