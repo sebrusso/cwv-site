@@ -45,6 +45,18 @@ curl -vIs https://registry.npmjs.org
 # corepack prepare pnpm@latest --activate
 
 echo "Installing dependencies with pnpm (debug loglevel)..."
-pnpm install --frozen-lockfile --loglevel debug
+# pnpm install --frozen-lockfile --loglevel debug # Old command
+
+# Detect missing lockfile and fall back gracefully
+if [ ! -f pnpm-lock.yaml ]; then
+  echo "⚠️  pnpm-lock.yaml missing – generating a fresh lockfile"
+  pnpm install --no-frozen-lockfile --loglevel debug
+else
+  pnpm install --frozen-lockfile --loglevel debug
+fi
+
+echo "Running linters and type checkers..."
+pnpm lint
+pnpm typecheck
 
 echo "Setup complete." 
