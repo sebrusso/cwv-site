@@ -59,4 +59,9 @@ echo "Running linters and type checkers..."
 pnpm lint
 pnpm typecheck
 
+echo "Checking for remote Google font imports..."
+grep -R --include=\'*.{ts,tsx}\' "from \'next/font/google\'" src && \
+  (echo "❌ ERROR: Do not import fonts directly from 'next/font/google'. Use local fonts from '@/lib/fonts'." && exit 1) || \
+  echo "✅ No remote Google font imports found."
+
 echo "Setup complete." 

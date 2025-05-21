@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Inter } from "next/font/google";
+// import { Inter } from "next/font/google"; // Old import
+import { inter } from "@/lib/fonts"; // New import for local Inter
 import { UserProvider } from "@/contexts/UserContext";
 import "./globals.css";
 
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const inter = Inter({ subsets: ["latin"] });
+// const inter = Inter({ subsets: ["latin"] }); // Old initialization
 
 export const metadata: Metadata = {
   title: "Writing Evaluation Arena",
@@ -29,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.className} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${inter.className} antialiased`}
       >
         <UserProvider>
           <main className="min-h-screen p-4 sm:p-6 lg:p-8">{children}</main>
