@@ -6,6 +6,10 @@ import { useUser } from '@/contexts/UserContext';
 export default function DatasetPage() {
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
+  const datasetInfo = {
+    description:
+      'Dataset of AI vs human story comparisons in Parquet format. Size ~100MB.',
+  };
 
   const handleDownload = async () => {
     setLoading(true);
@@ -29,6 +33,9 @@ export default function DatasetPage() {
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Dataset Download</h1>
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        {datasetInfo.description}
+      </p>
       {user ? (
         <Button onClick={handleDownload} disabled={loading} className="w-fit">
           {loading ? 'Preparing...' : 'Download Dataset'}

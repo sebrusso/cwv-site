@@ -3,17 +3,20 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export async function GET() {
-  const cookieStore = cookies();
+  const cookieStorePromise = cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: async () => cookieStore.getAll(),
-        setAll: async (cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) => {
+        getAll: async () => (await cookieStorePromise).getAll(),
+        setAll: async (
+          cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>
+        ) => {
           try {
+            const store = await cookieStorePromise;
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options as CookieOptions);
+              store.set(name, value, options as CookieOptions);
             });
           } catch {
             // ignore cookie setting errors
