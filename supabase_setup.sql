@@ -66,6 +66,16 @@ CREATE TABLE IF NOT EXISTS human_model_evaluations (
 
 -- Enable RLS on human_model_evaluations
 ALTER TABLE human_model_evaluations ENABLE ROW LEVEL SECURITY;
+=======
+-- Create dataset_downloads table
+CREATE TABLE IF NOT EXISTS dataset_downloads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on dataset_downloads
+ALTER TABLE dataset_downloads ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies
 
@@ -107,6 +117,15 @@ CREATE POLICY "Users can insert their own human_model_evaluations"
 CREATE POLICY "Users can view their own human_model_evaluations"
   ON human_model_evaluations FOR SELECT
   USING (auth.uid() = user_id);
+=======
+-- Dataset downloads policies
+CREATE POLICY "Dataset downloads are viewable by everyone"
+  ON dataset_downloads FOR SELECT
+  USING (true);
+CREATE POLICY "Users can insert their own dataset downloads"
+  ON dataset_downloads FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
 
 -- Create a function to handle new user signups
 CREATE OR REPLACE FUNCTION public.handle_new_user()
