@@ -36,5 +36,12 @@ export async function GET() {
   if (!url) {
     return NextResponse.json({ error: 'Dataset URL not configured' }, { status: 500 });
   }
+  // Record the download in Supabase
+  const { error } = await supabase.from('dataset_downloads').insert({
+    user_id: session.user.id,
+  });
+  if (error) {
+    console.error('Failed to record dataset download', error);
+  }
   return NextResponse.json({ url });
 }
