@@ -1,12 +1,24 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
+import { supabase } from '@/lib/supabase';
 
 export default function ResourcesPage() {
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
+  const [downloadCount, setDownloadCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      const { count } = await supabase
+        .from('dataset_downloads')
+        .select('id', { count: 'exact', head: true });
+      if (count !== null) setDownloadCount(count);
+    };
+    fetchCount();
+  }, []);
   const datasetInfo = {
     description:
       'Dataset of AI vs human story comparisons in Parquet format. Size ~100MB.',
@@ -39,6 +51,11 @@ export default function ResourcesPage() {
         <p className="text-sm text-gray-600 dark:text-gray-400">
           {datasetInfo.description}
         </p>
+        {downloadCount !== null && (
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Downloads: {downloadCount}
+          </p>
+        )}
         {user ? (
           <Button onClick={handleDownload} disabled={loading} className="w-fit">
             {loading ? 'Preparing...' : 'Download Dataset'}
