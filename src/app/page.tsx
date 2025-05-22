@@ -35,7 +35,7 @@ async function getVisualizationData() {
             cookiesToSet.forEach(({ name, value, options }) => {
               store.set(name, value, options as CookieOptions); 
             });
-          } catch (error) {
+          } catch {
             // console.warn("Attempted to set cookies in a Read-Only Server Component context via setAll", error);
           }
         },
@@ -125,6 +125,10 @@ export default async function Home() {
               {vizData ? 'No data to display.' : 'Error fetching data or table is empty.'}
             </p>
           )}
+        </div>
+        <div className="mt-8 text-center text-sm">
+          <a href="/paper" className="underline mr-4">Read the Paper</a>
+          <a href="/dataset" className="underline">Download Dataset</a>
         </div>
       </div>
     </div>
