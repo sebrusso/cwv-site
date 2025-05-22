@@ -101,3 +101,42 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user(); 
+-- Create dataset_downloads table
+CREATE TABLE IF NOT EXISTS dataset_downloads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on dataset_downloads
+ALTER TABLE dataset_downloads ENABLE ROW LEVEL SECURITY;
+
+-- Dataset downloads policies
+CREATE POLICY "Users can insert their own dataset download"
+  ON dataset_downloads FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own dataset downloads"
+  ON dataset_downloads FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Create human_model_evaluations table
+CREATE TABLE IF NOT EXISTS human_model_evaluations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  prompt_id UUID REFERENCES "writingprompts-pairwise-test"(id) NOT NULL,
+  is_correct BOOLEAN NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on human_model_evaluations
+ALTER TABLE human_model_evaluations ENABLE ROW LEVEL SECURITY;
+
+-- Human vs model evaluation policies
+CREATE POLICY "Users can insert their own human vs model evaluation"
+  ON human_model_evaluations FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own human vs model evaluations"
+  ON human_model_evaluations FOR SELECT
+  USING (auth.uid() = user_id);
