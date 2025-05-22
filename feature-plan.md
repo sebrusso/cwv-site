@@ -303,4 +303,5 @@ In conclusion, by implementing a solid authentication system with Supabase and c
 ## Notes on Post-MVP Implementation
 - The plan calls for an interactive PDF viewer using `react-pdf`. This library is not installed in the repo and cannot be fetched in the sandbox. To implement: add `react-pdf` and `pdfjs-dist` as dependencies, dynamically import a `PDFViewer` component that uses `<Document>` and `<Page>` with custom zoom and page navigation controls. Configure `pdfjs.GlobalWorkerOptions.workerSrc` to point to the bundled worker in `/public`.
 - Dataset download analytics are mentioned but no table schema exists. One approach: create a `dataset_downloads` table with columns `id`, `user_id`, and `downloaded_at` (timestamp). Update `/api/download-dataset` to insert a row when a signed URL is generated.
+- A new human-vs-model mode will use OpenAI API to generate text. Clarify which table stores human stories and create a table like `human_model_evaluations` to log guesses and model choice. Implement API route to call OpenAI and return generated text without exposing the key.
 

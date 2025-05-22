@@ -126,10 +126,6 @@ export default async function Home() {
             </p>
           )}
         </div>
-        <div className="mt-8 text-center text-sm">
-          <a href="/paper" className="underline mr-4">Read the Paper</a>
-          <a href="/dataset" className="underline">Download Dataset</a>
-        </div>
       </div>
     </div>
   );
