@@ -23,6 +23,7 @@ export function HumanMachineArena() {
   const [selectedId, setSelectedId] = useState<string | "random">("random");
   const [model, setModel] = useState<string>(MODELS[0]);
   const [loading, setLoading] = useState(false);
+  const [currentPromptId, setCurrentPromptId] = useState<string | null>(null);
   const [texts, setTexts] = useState<{ left: string; right: string }>({
     left: "",
     right: "",
@@ -70,6 +71,7 @@ export function HumanMachineArena() {
       setLoading(false);
       return;
     }
+    setCurrentPromptId(row.id);
     const aiRes = await fetch("/api/generate-openai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,9 +84,25 @@ export function HumanMachineArena() {
     setLoading(false);
   };
 
-  const selectSide = (side: "left" | "right") => {
+  const selectSide = async (side: "left" | "right") => {
     const isCorrect = mapping[side] === "human";
     setResult(isCorrect);
+
+    if (currentPromptId) {
+      try {
+        await fetch("/api/human-model-evaluations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            promptId: currentPromptId,
+            modelName: model,
+            guessCorrect: isCorrect,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to log evaluation", err);
+      }
+    }
   };
 
   return (

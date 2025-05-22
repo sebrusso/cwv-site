@@ -54,6 +54,19 @@ CREATE TABLE IF NOT EXISTS rationales (
 -- Enable RLS on rationales
 ALTER TABLE rationales ENABLE ROW LEVEL SECURITY;
 
+-- Create human_model_evaluations table
+CREATE TABLE IF NOT EXISTS human_model_evaluations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  prompt_id UUID REFERENCES "writingprompts-pairwise-test"(id) NOT NULL,
+  model_name TEXT NOT NULL,
+  guess_correct BOOLEAN NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on human_model_evaluations
+ALTER TABLE human_model_evaluations ENABLE ROW LEVEL SECURITY;
+
 -- Create RLS policies
 
 -- Profiles policies
@@ -86,6 +99,14 @@ CREATE POLICY "Rationales are viewable by everyone"
 CREATE POLICY "Users can insert their own rationales"
   ON rationales FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+-- Human model evaluation policies
+CREATE POLICY "Users can insert their own human_model_evaluations"
+  ON human_model_evaluations FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can view their own human_model_evaluations"
+  ON human_model_evaluations FOR SELECT
+  USING (auth.uid() = user_id);
 
 -- Create a function to handle new user signups
 CREATE OR REPLACE FUNCTION public.handle_new_user()
