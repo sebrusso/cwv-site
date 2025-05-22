@@ -1,7 +1,7 @@
 import { HumanEvaluationArena } from "@/components/HumanEvaluationArena";
 import { WritingTypeToggle } from "@/components/WritingTypeToggle";
 import { UserProfileButton } from "@/components/UserProfileButton";
-import { ScoreDisplay } from "@/components/ScoreDisplay";
+import { UserScoreDisplay } from "@/components/UserScoreDisplay";
 import { HelpButton } from "@/components/HelpButton";
 import { Info } from "lucide-react";
 import { cookies } from 'next/headers';
@@ -69,7 +69,7 @@ export default async function Home() {
             Creative Writing Evaluation Arena 📝
           </h1>
           <div className="flex items-center justify-center sm:justify-end gap-3">
-            <ScoreDisplay mode="human" />
+            <UserScoreDisplay mode="human" />
             <HelpButton mode="human" />
             <UserProfileButton />
           </div>
