@@ -159,3 +159,51 @@ CREATE POLICY "Users can insert their own human vs model evaluation"
 CREATE POLICY "Users can view their own human vs model evaluations"
   ON human_model_evaluations FOR SELECT
   USING (auth.uid() = user_id);
+
+-- Create model_evaluations table
+CREATE TABLE IF NOT EXISTS model_evaluations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  prompt_id UUID REFERENCES "writingprompts-pairwise-test"(id) NOT NULL,
+  model_name TEXT NOT NULL,
+  selected_response TEXT NOT NULL,
+  ground_truth TEXT NOT NULL,
+  is_correct BOOLEAN NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on model_evaluations
+ALTER TABLE model_evaluations ENABLE ROW LEVEL SECURITY;
+
+-- Model evaluation policies
+CREATE POLICY "Users can insert their own model evaluation"
+  ON model_evaluations FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own model evaluations"
+  ON model_evaluations FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Create model_writing_rationales table
+CREATE TABLE IF NOT EXISTS model_writing_rationales (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  prompt_id UUID REFERENCES "writingprompts-pairwise-test"(id) NOT NULL,
+  model_name TEXT NOT NULL,
+  selected_response TEXT NOT NULL,
+  ground_truth TEXT NOT NULL,
+  is_correct BOOLEAN NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on model_writing_rationales
+ALTER TABLE model_writing_rationales ENABLE ROW LEVEL SECURITY;
+
+-- Model writing rationales policies
+CREATE POLICY "Users can insert their own model writing rationale"
+  ON model_writing_rationales FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own model writing rationales"
+  ON model_writing_rationales FOR SELECT
+  USING (auth.uid() = user_id);
