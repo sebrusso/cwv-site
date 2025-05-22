@@ -299,3 +299,8 @@ Since the question doesn’t explicitly ask, we can consider password reset a st
 	•	Example from Supabase tutorial: Notably, Supabase’s Next.js example app does what we want – it authenticates, then stores profile info (like username, avatar) in a table, with RLS. We are basically following that pattern, just with different fields. So we can be confident this approach is well-tested.
 
 In conclusion, by implementing a solid authentication system with Supabase and collecting user metadata upon onboarding, we will be able to personalize the experience and link user traits to their interaction data. This is crucial for analyzing the results of the human vs model comparisons in a research context. It also enhances user engagement, as they can have accounts, see their stats, and trust that their data is secure.
+
+## Notes on Post-MVP Implementation
+- The plan calls for an interactive PDF viewer using `react-pdf`. This library is not installed in the repo and cannot be fetched in the sandbox. To implement: add `react-pdf` and `pdfjs-dist` as dependencies, dynamically import a `PDFViewer` component that uses `<Document>` and `<Page>` with custom zoom and page navigation controls. Configure `pdfjs.GlobalWorkerOptions.workerSrc` to point to the bundled worker in `/public`.
+- Dataset download analytics are mentioned but no table schema exists. One approach: create a `dataset_downloads` table with columns `id`, `user_id`, and `downloaded_at` (timestamp). Update `/api/download-dataset` to insert a row when a signed URL is generated.
+
