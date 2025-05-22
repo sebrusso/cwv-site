@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import fs from 'fs';
+import path from 'path';
+import ts from 'typescript';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+
+function loadRoute(tsPath) {
+  const src = fs.readFileSync(tsPath, 'utf8');
+  const compiled = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  const outDir = path.join('.test-tmp');
+  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
+  const outPath = path.join(outDir, unique + '.cjs');
+  fs.writeFileSync(outPath, compiled);
+  return require(path.resolve(outPath));
+}
+
+function supabaseMock(session, onInsert) {
+  return {
+    auth: {
+      getSession: async () => ({ data: { session } }),
+    },
+    from: () => ({
+      insert: async (data) => {
+        if (onInsert) onInsert(data);
+        return { error: null };
+      },
+    }),
+  };
+}
+
+test('download-dataset unauthorized', async () => {
+  const { handleDownloadDataset } = loadRoute('src/app/api/download-dataset/route.ts');
+  const res = await handleDownloadDataset(supabaseMock(null));
+  assert.equal(res.status, 401);
+});
+
+test('download-dataset inserts row for authorized user', async () => {
+  let inserted = false;
+  const { handleDownloadDataset } = loadRoute('src/app/api/download-dataset/route.ts');
+  process.env.DATASET_URL = 'https://example.com/dataset';
+  const res = await handleDownloadDataset(
+    supabaseMock({ user: { id: '123' } }, () => {
+      inserted = true;
+    })
+  );
+  assert.equal(res.status, 200);
+  assert.ok(inserted);
+});
+
+test('human-model-evaluations unauthorized', async () => {
+  const { handleHumanModelEvaluation } = loadRoute('src/app/api/human-model-evaluations/route.ts');
+  const res = await handleHumanModelEvaluation(supabaseMock(null), { prompt_id: 'p1', is_correct: true });
+  assert.equal(res.status, 401);
+});
+
+test('human-model-evaluations inserts row', async () => {
+  let inserted;
+  const { handleHumanModelEvaluation } = loadRoute('src/app/api/human-model-evaluations/route.ts');
+  const res = await handleHumanModelEvaluation(
+    supabaseMock({ user: { id: 'u1' } }, (data) => {
+      inserted = data;
+    }),
+    { prompt_id: 'p1', is_correct: false }
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(inserted, { user_id: 'u1', prompt_id: 'p1', is_correct: false });
+});
