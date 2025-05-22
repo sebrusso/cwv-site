@@ -25,4 +25,4 @@ export const inter = localFont({
       style: 'italic',
     },
   ],
-}); 
+});
