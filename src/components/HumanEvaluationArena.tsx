@@ -58,6 +58,7 @@ export function HumanEvaluationArena() {
   );
   const [showUpvotes, setShowUpvotes] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
+  const [showHighlightTip, setShowHighlightTip] = useState(false);
 
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
@@ -73,6 +74,13 @@ export function HumanEvaluationArena() {
     }
   };
 
+  const dismissHighlightTip = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("highlightTipSeen", "true");
+    }
+    setShowHighlightTip(false);
+  };
+
   // Load score from localStorage on initial render
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -84,6 +92,10 @@ export function HumanEvaluationArena() {
         } catch (e) {
           console.error("Error parsing saved score:", e);
         }
+      }
+      const tipSeen = localStorage.getItem("highlightTipSeen");
+      if (!tipSeen) {
+        setShowHighlightTip(true);
       }
     }
   }, []);
@@ -303,6 +315,21 @@ export function HumanEvaluationArena() {
 
   return (
     <div className="flex flex-col items-center gap-8">
+      {showHighlightTip && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Card className="w-full max-w-sm p-6">
+            <div className="flex flex-col gap-4">
+              <h3 className="text-lg font-medium">Tip</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                You can select text in the responses to highlight your favorite sentence.
+              </p>
+              <div className="flex justify-end">
+                <Button onClick={dismissHighlightTip}>Got it</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
       {/* Confirmation Dialog */}
       {pendingSelection && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
