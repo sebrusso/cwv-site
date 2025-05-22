@@ -85,6 +85,9 @@ export function HumanMachineArena() {
   const selectSide = (side: "left" | "right") => {
     const isCorrect = mapping[side] === "human";
     setResult(isCorrect);
+    if (isCorrect && typeof window !== "undefined") {
+      void import("canvas-confetti").then((m) => m.default());
+    }
   };
 
   return (
