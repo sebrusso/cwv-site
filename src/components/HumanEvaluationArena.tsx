@@ -57,11 +57,21 @@ export function HumanEvaluationArena() {
     null
   );
   const [showUpvotes, setShowUpvotes] = useState(false);
+  const [highlight, setHighlight] = useState<string>("");
 
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
 
   const { user, profile, incrementScore, addViewedPrompt } = useUser();
+
+  const handleHighlight = () => {
+    if (typeof window === "undefined") return;
+    const selection = window.getSelection();
+    const text = selection ? selection.toString().trim() : "";
+    if (text) {
+      setHighlight(text);
+    }
+  };
 
   // Load score from localStorage on initial render
   useEffect(() => {
@@ -223,6 +233,7 @@ export function HumanEvaluationArena() {
     setRationale("");
     setPendingScoreUpdate(null);
     setShowUpvotes(false);
+    setHighlight("");
 
     // Fetch next prompt
     fetchRandomPrompt();
@@ -253,6 +264,7 @@ export function HumanEvaluationArena() {
         rationale: rationale.trim(),
         user_id: user.id,
         is_correct: isCorrect,
+        highlight_text: highlight || null,
       });
 
       if (insertError) {
@@ -271,6 +283,7 @@ export function HumanEvaluationArena() {
       // Close the rationale dialog
       setShowRationale(false);
       setRationale(""); // Clear the rationale for next time
+      setHighlight("");
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
@@ -285,6 +298,7 @@ export function HumanEvaluationArena() {
   const handleSkipRationale = () => {
     setShowUpvotes(true);
     setShowRationale(false);
+    setHighlight("");
   };
 
   return (
@@ -326,6 +340,11 @@ export function HumanEvaluationArena() {
                   ? "We encourage you to add rationale for why you selected this response."
                   : "Please log in to submit your rationale. Your insights help us improve our understanding of quality writing."}
               </p>
+              {highlight && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="font-medium">Highlighted text:</span> &quot;{highlight}&quot;
+                </p>
+              )}
               <textarea
                 className="w-full h-32 p-3 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={rationale}
@@ -471,6 +490,7 @@ export function HumanEvaluationArena() {
                 >
                   <div
                     className="max-h-[500px] overflow-y-auto"
+                    onMouseUp={handleHighlight}
                     ref={leftTextRef}
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -516,6 +536,7 @@ export function HumanEvaluationArena() {
                 >
                   <div
                     className="max-h-[500px] overflow-y-auto"
+                    onMouseUp={handleHighlight}
                     ref={rightTextRef}
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">

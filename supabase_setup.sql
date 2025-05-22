@@ -44,7 +44,10 @@ ALTER TABLE user_feedback ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS rationales (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   prompt_id UUID REFERENCES "writingprompts-pairwise-test"(id) NOT NULL,
+  user_id UUID REFERENCES auth.users(id),
   rationale TEXT NOT NULL,
+  highlight_text TEXT,
+  is_correct BOOLEAN,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -80,6 +83,9 @@ CREATE POLICY "Prompts are viewable by everyone"
 CREATE POLICY "Rationales are viewable by everyone"
   ON rationales FOR SELECT
   USING (true);
+CREATE POLICY "Users can insert their own rationales"
+  ON rationales FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
 
 -- Create a function to handle new user signups
 CREATE OR REPLACE FUNCTION public.handle_new_user()
