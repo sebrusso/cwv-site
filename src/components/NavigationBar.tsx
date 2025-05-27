@@ -11,6 +11,7 @@ export function NavigationBar() {
     <nav className="mb-4 flex gap-2">
       <Link href="/" className={linkClass("/")}>Arena</Link>
       <Link href="/resources" className={linkClass("/resources")}>Resources</Link>
+      <Link href="/leaderboard" className={linkClass("/leaderboard")}>Leaderboard</Link>
     </nav>
   );
 }
