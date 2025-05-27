@@ -1,11 +1,15 @@
+"use client";
+
 import { ModelEvaluationArena } from "@/components/ModelEvaluationArena";
 import { WritingTypeToggle } from "@/components/WritingTypeToggle";
 import { UserProfileButton } from "@/components/UserProfileButton";
 import { ScoreDisplay } from "@/components/ScoreDisplay";
 import { HelpButton } from "@/components/HelpButton";
+import { useUser } from "@/contexts/UserContext";
 import { Info } from "lucide-react";
 
 export default function ModelEvaluation() {
+  const { profile } = useUser();
   return (
     <div className="flex flex-col items-center">
       <div className="w-full max-w-6xl">
@@ -14,7 +18,7 @@ export default function ModelEvaluation() {
             Model Writing Evaluation Arena 🤖
           </h1>
           <div className="flex items-center justify-center sm:justify-end gap-3">
-            <ScoreDisplay mode="model" />
+            <ScoreDisplay mode="model" score={profile?.score} />
             <HelpButton mode="model" />
             <UserProfileButton />
           </div>

@@ -1,11 +1,15 @@
+"use client";
+
 import { HumanMachineArena } from '@/components/HumanMachineArena';
 import { WritingTypeToggle } from '@/components/WritingTypeToggle';
 import { HelpButton } from '@/components/HelpButton';
 import { UserProfileButton } from '@/components/UserProfileButton';
 import { ScoreDisplay } from '@/components/ScoreDisplay';
+import { useUser } from '@/contexts/UserContext';
 import { Info } from 'lucide-react';
 
 export default function HumanMachinePage() {
+  const { profile } = useUser();
   return (
     <div className="flex flex-col items-center">
       <div className="w-full max-w-6xl">
@@ -14,7 +18,7 @@ export default function HumanMachinePage() {
             Human vs Machine 🤖
           </h1>
           <div className="flex items-center justify-center sm:justify-end gap-3">
-            <ScoreDisplay mode="model" />
+            <ScoreDisplay mode="model" score={profile?.score} />
             <HelpButton mode="model" />
             <UserProfileButton />
           </div>
