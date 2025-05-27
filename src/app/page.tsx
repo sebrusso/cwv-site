@@ -8,58 +8,58 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 // Define a type for our data
-type VisualizationData = {
-  id: number;
-  integer_column: number | null;
-  text_column: string | null;
-  timestamp_column: string | null; // Supabase timestamps come as strings
-  created_at: string;
-};
+// type VisualizationData = {
+//   id: number;
+//   integer_column: number | null;
+//   text_column: string | null;
+//   timestamp_column: string | null; // Supabase timestamps come as strings
+//   created_at: string;
+// };
 
-async function getVisualizationData() {
-  const cookieStore = cookies();
-
-  // Correct server client initialization using the new pattern from @supabase/ssr docs
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: async () => {
-          const store = await cookieStore;
-          return store.getAll();
-        },
-        setAll: async (cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) => {
-          try {
-            const store = await cookieStore;
-            cookiesToSet.forEach(({ name, value, options }) => {
-              store.set(name, value, options as CookieOptions); 
-            });
-          } catch {
-            // console.warn("Attempted to set cookies in a Read-Only Server Component context via setAll", error);
-          }
-        },
-      },
-    }
-  );
-
-  const { data, error } = await supabase
-    .from("hf_data_visualization") // Your table name
-    .select("*")
-    .order("timestamp_column", { ascending: false }) // Example ordering
-    .limit(100); // Example limit
-
-  if (error) {
-    console.error("Error fetching visualization data:", error);
-    // Consider throwing the error or returning a more specific error object
-    return [];
-  }
-  // Assuming RLS is set up to allow reads or using service key for admin reads if needed
-  return data as VisualizationData[];
-}
+// async function getVisualizationData() {
+//   const cookieStore = cookies();
+//
+//   // Correct server client initialization using the new pattern from @supabase/ssr docs
+//   const supabase = createServerClient(
+//     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+//     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+//     {
+//       cookies: {
+//         getAll: async () => {
+//           const store = await cookieStore;
+//           return store.getAll();
+//         },
+//         setAll: async (cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) => {
+//           try {
+//             const store = await cookieStore;
+//             cookiesToSet.forEach(({ name, value, options }) => {
+//               store.set(name, value, options as CookieOptions);
+//             });
+//           } catch {
+//             // console.warn("Attempted to set cookies in a Read-Only Server Component context via setAll", error);
+//           }
+//         },
+//       },
+//     }
+//   );
+//
+//   const { data, error } = await supabase
+//     .from("hf_data_visualization") // Your table name
+//     .select("*")
+//     .order("timestamp_column", { ascending: false }) // Example ordering
+//     .limit(100); // Example limit
+//
+//   if (error) {
+//     console.error("Error fetching visualization data:", error);
+//     // Consider throwing the error or returning a more specific error object
+//     return [];
+//   }
+//   // Assuming RLS is set up to allow reads or using service key for admin reads if needed
+//   return data as VisualizationData[];
+// }
 
 export default async function Home() {
-  const vizData = await getVisualizationData();
+  // const vizData = await getVisualizationData();
 
   return (
     <div className="flex flex-col items-center p-4">
@@ -87,7 +87,7 @@ export default async function Home() {
 
         <HumanEvaluationArena />
 
-        <div className="mt-12 w-full">
+        {/* <div className="mt-12 w-full">
           <h2 className="text-xl font-semibold mb-6 text-center sm:text-left">
             Hugging Face Data Visualization
           </h2>
@@ -125,7 +125,7 @@ export default async function Home() {
               {vizData ? 'No data to display.' : 'Error fetching data or table is empty.'}
             </p>
           )}
-        </div>
+        </div> */}
       </div>
     </div>
   );

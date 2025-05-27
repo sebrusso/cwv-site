@@ -102,6 +102,7 @@ export function HumanMachineArena() {
       } catch (err) {
         console.error("Failed to log evaluation", err);
       }
+    }
     if (isCorrect && typeof window !== "undefined") {
       void import("canvas-confetti").then((m) => m.default());
     }
