@@ -44,23 +44,4 @@ export async function GET() {
   );
 
   return handleDownloadDataset(supabase);
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const url = process.env.DATASET_URL;
-  if (!url) {
-    return NextResponse.json({ error: 'Dataset URL not configured' }, { status: 500 });
-  }
-  // Record the download in Supabase
-  const { error } = await supabase.from('dataset_downloads').insert({
-    user_id: session.user.id,
-  });
-  if (error) {
-    console.error('Failed to record dataset download', error);
-  }
-  return NextResponse.json({ url });
 }
