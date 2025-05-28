@@ -60,6 +60,10 @@ export function HumanEvaluationArena() {
   const [showUpvotes, setShowUpvotes] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
   const [showHighlightTip, setShowHighlightTip] = useState(false);
+  const [prompts, setPrompts] = useState<Pick<WritingPrompt, "id" | "prompt">[]>([]);
+  const [selectedId, setSelectedId] = useState<string | "random">("random");
+  const MODELS = ["gpt-4o", "gpt-4.5-turbo", "gpt-4o-mini", "gpt-4.0"] as const;
+  const [model, setModel] = useState<string>(MODELS[0]);
 
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
@@ -114,6 +118,19 @@ export function HumanEvaluationArena() {
       }));
     }
   }, [user, profile]);
+
+  // Load prompt options when a user is authenticated
+  useEffect(() => {
+    if (!user) return;
+    const loadPrompts = async () => {
+      const { data } = await supabase
+        .from("writingprompts-pairwise-test")
+        .select("id,prompt")
+        .limit(50);
+      setPrompts(data || []);
+    };
+    loadPrompts();
+  }, [user]);
 
   const fetchRandomPrompt = async () => {
     setError(null);
@@ -174,10 +191,62 @@ export function HumanEvaluationArena() {
     }
   };
 
+  const fetchPromptById = async (id: string) => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("writingprompts-pairwise-test")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error || !data) {
+        setError("Prompt not found. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      const promptData = data;
+      setPrompt(promptData);
+      setSelectedText(null);
+      setFeedback(null);
+
+      const isChosenLeft = Math.random() < 0.5;
+      setTexts({
+        left: isChosenLeft ? promptData.chosen : promptData.rejected,
+        right: isChosenLeft ? promptData.rejected : promptData.chosen,
+      });
+
+      if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
+      if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
+
+      if (user && promptData.id) {
+        addViewedPrompt(promptData.id);
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      setError(`Failed to fetch prompt: ${errorMessage}`);
+      console.error("Error fetching prompt:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPrompt = async () => {
+    if (user && selectedId !== "random") {
+      await fetchPromptById(selectedId);
+    } else {
+      await fetchRandomPrompt();
+    }
+  };
+
   useEffect(() => {
-    fetchRandomPrompt();
+    fetchPrompt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   if (!user && !isLoading) {
     return (
@@ -260,7 +329,7 @@ export function HumanEvaluationArena() {
     setHighlight("");
 
     // Fetch next prompt
-    fetchRandomPrompt();
+    fetchPrompt();
   };
 
   const saveRationale = async () => {
@@ -327,6 +396,36 @@ export function HumanEvaluationArena() {
 
   return (
     <div className="flex flex-col items-center gap-8">
+      <div className="flex flex-wrap gap-2">
+        {user && (
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="border p-2 rounded-md"
+          >
+            <option value="random">Random Prompt</option>
+            {prompts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.prompt.slice(0, 40)}
+              </option>
+            ))}
+          </select>
+        )}
+        <select
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          className="border p-2 rounded-md"
+        >
+          {MODELS.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <Button onClick={fetchPrompt} disabled={isLoading}>
+          {isLoading ? "Loading..." : user ? "Load" : "New Prompt"}
+        </Button>
+      </div>
       {showHighlightTip && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="w-full max-w-sm p-6">
