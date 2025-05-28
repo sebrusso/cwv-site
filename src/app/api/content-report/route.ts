@@ -4,7 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function handleContentReport(
+async function handleContentReport(
   supabase: SupabaseClient,
   body: { contentType: string; contentId: string; reason?: string }
 ) {

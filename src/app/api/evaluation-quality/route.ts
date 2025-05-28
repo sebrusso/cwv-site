@@ -34,9 +34,9 @@ async function getClient() {
   );
 }
 
-export async function handlePostQuality(
+async function handlePostQuality(
   supabase: SupabaseClient,
-  payload: MetricPayload
+  body: { evaluationTime: number; promptSimilarity: number; confidenceScore: number }
 ) {
   const {
     data: { session },
@@ -44,11 +44,12 @@ export async function handlePostQuality(
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { error } = await supabase.from('evaluation_quality_metrics').insert({
+  const { evaluationTime, promptSimilarity, confidenceScore } = body;
+  const { error } = await supabase.from('evaluation_quality').insert({
     user_id: session.user.id,
-    evaluation_time_ms: Math.round(payload.evaluationTime),
-    prompt_similarity: payload.promptSimilarity,
-    confidence_score: payload.confidenceScore,
+    evaluation_time: evaluationTime,
+    prompt_similarity: promptSimilarity,
+    confidence_score: confidenceScore,
   });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -56,7 +57,7 @@ export async function handlePostQuality(
   return NextResponse.json({ success: true });
 }
 
-export async function handleGetQuality(supabase: SupabaseClient) {
+async function handleGetQuality(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('evaluation_quality_metrics')
     .select('evaluation_time_ms,prompt_similarity,confidence_score');

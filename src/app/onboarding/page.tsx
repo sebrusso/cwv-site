@@ -21,7 +21,7 @@ export default function OnboardingPage() {
         router.push("/");
       }
     }
-  }, [isLoading, user, profile?.demographics_completed, router]);
+  }, [isLoading, user, profile, router]);
 
   // Show loading while we're still determining the user state
   if (isLoading) {

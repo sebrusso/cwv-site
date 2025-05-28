@@ -75,7 +75,6 @@ export function ModelEvaluationArena() {
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [evaluationStart, setEvaluationStart] = useState<number>(0);
-  const [isPrefetching, setIsPrefetching] = useState(false);
   const [prefetchedPromptId, setPrefetchedPromptId] = useState<string | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
@@ -118,7 +117,7 @@ export function ModelEvaluationArena() {
     fetchAvailableModels();
   }, []);
 
-  const getRandomPromptId = async () => {
+  const getRandomPromptId = useCallback(async () => {
     const { count, error: countError } = await supabase
       .from("writingprompts-pairwise-test")
       .select("id", { count: "exact", head: true });
@@ -133,7 +132,7 @@ export function ModelEvaluationArena() {
       .single();
     if (randomPromptError || !randomPromptEntry) throw randomPromptError || new Error("Failed to fetch ID");
     return randomPromptEntry.id as string;
-  };
+  }, [isClientMounted]);
 
   const fetchComparison = async (id: string, modelA: string, modelB: string, prefetch = false) => {
     const apiResponse = await fetch("/api/generate-live-comparison", {
@@ -152,16 +151,13 @@ export function ModelEvaluationArena() {
     if (!selectedModels) return;
     
     try {
-      setIsPrefetching(true);
       const id = await getRandomPromptId();
       await fetchComparison(id, selectedModels.modelA, selectedModels.modelB, true);
       setPrefetchedPromptId(id);
     } catch (err) {
       console.error("Prefetch error", err);
-    } finally {
-      setIsPrefetching(false);
     }
-  }, [selectedModels, isClientMounted]);
+  }, [selectedModels, getRandomPromptId]);
 
   const generateComparison = async (promptId?: string) => {
     if (!selectedModels) {
@@ -401,7 +397,7 @@ export function ModelEvaluationArena() {
           <h2 className="text-xl font-semibold mb-4">Choose Models to Compare</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Select two AI models to generate stories for comparison. The models will create responses to the same prompt, 
-            and you'll evaluate which response you prefer.
+            and you&apos;ll evaluate which response you prefer.
           </p>
         </div>
         

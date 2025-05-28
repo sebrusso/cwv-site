@@ -43,7 +43,6 @@ export function HumanMachineArena() {
   });
   const [result, setResult] = useState<boolean | null>(null);
   const [selectedText, setSelectedText] = useState<string | null>(null);
-  const [highlight, setHighlight] = useState<string>("");
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
   const [pendingSelectionSide, setPendingSelectionSide] = useState<"left" | "right" | null>(null);
 
@@ -91,7 +90,8 @@ export function HumanMachineArena() {
     setProgress(20);
     setResult(null);
     setSelectedText(null);
-    setHighlight("");
+    setTexts({ left: "", right: "" });
+    setCurrentPromptId(null);
     setPendingSelection(null);
     setPendingSelectionSide(null);
     
@@ -190,7 +190,6 @@ export function HumanMachineArena() {
   const handleNextSample = () => {
     setSelectedText(null);
     setResult(null);
-    setHighlight("");
     setTexts({ left: "", right: "" });
     setCurrentPromptId(null);
     setPendingSelection(null);
@@ -252,7 +251,6 @@ export function HumanMachineArena() {
                 text={texts.left}
                 enableHighlight
                 id="hm-left-pane"
-                onHighlight={setHighlight}
               />
             </Card>
           </div>
@@ -279,7 +277,6 @@ export function HumanMachineArena() {
                 text={texts.right}
                 enableHighlight
                 id="hm-right-pane"
-                onHighlight={setHighlight}
               />
             </Card>
           </div>

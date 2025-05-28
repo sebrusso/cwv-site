@@ -8,10 +8,9 @@ import Link from "next/link";
 
 interface LoginFormProps {
   onClose?: () => void;
-  redirectPath?: string;
 }
 
-export function LoginForm({ onClose, redirectPath }: LoginFormProps) {
+export function LoginForm({ onClose }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -25,7 +24,7 @@ export function LoginForm({ onClose, redirectPath }: LoginFormProps) {
     setError(null);
 
     try {
-      const { error } = await signInWithPassword(email, password, remember);
+      const { error } = await signInWithPassword(email, password);
       if (error) {
         setError(error.message);
       } else if (onClose) {

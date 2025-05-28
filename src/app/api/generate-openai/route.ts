@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { isValidLength } from '../../../lib/utils';
 import { generateText } from '../../../lib/models/aiService';
 
-export async function handleGenerateOpenAI(
+async function handleGenerateOpenAI(
   fetchFn: typeof fetch,
   { prompt, model, params }: { prompt: string; model: string; params?: { temperature?: number; max_tokens?: number } },
 ) {
