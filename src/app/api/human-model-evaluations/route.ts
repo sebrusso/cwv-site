@@ -1,8 +1,33 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
+export async function handleHumanModelEvaluation(
+  supabase: SupabaseClient,
+  body: { promptId: string; modelName: string; guessCorrect: boolean }
+) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  const { promptId, modelName, guessCorrect } = body;
+  const { error } = await supabase.from('human_model_evaluations').insert({
+    user_id: session.user.id,
+    prompt_id: promptId,
+    model_name: modelName,
+    guess_correct: guessCorrect,
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
 
 export async function POST(req: Request) {
   const cookieStorePromise = cookies();
@@ -21,37 +46,16 @@ export async function POST(req: Request) {
               store.set(name, value, options as CookieOptions);
             });
           } catch {
-            // ignore
+            // ignore cookie setting errors
           }
         },
       },
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
-    const { promptId, modelName, guessCorrect } = await req.json();
-
-    const { error } = await supabase.from('human_model_evaluations').insert({
-      user_id: session.user.id,
-      prompt_id: promptId,
-      model_name: modelName,
-      guess_correct: guessCorrect,
-    });
-
-    if (error) {
-      console.error('Failed to save evaluation', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
+    const body = await req.json();
+    return handleHumanModelEvaluation(supabase, body);
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: 'Failed to save evaluation' }, { status: 500 });

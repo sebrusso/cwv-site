@@ -11,16 +11,28 @@ function loadRoute(tsPath) {
   const src = fs.readFileSync(tsPath, 'utf8');
   const compiled = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
   const outDir = path.join('.test-tmp');
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  fs.mkdirSync(outDir, { recursive: true });
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');
   fs.writeFileSync(outPath, compiled);
   return require(path.resolve(outPath));
 }
 
+function supabaseSelectMock(dataMap) {
+  return {
+    from: (table) => ({
+      select: async () => ({ data: dataMap[table], error: null }),
+    }),
+  };
+}
+
 test('model leaderboard returns an array of entries', async () => {
   const { handleModelLeaderboard } = loadRoute('src/app/api/model-leaderboard/route.ts');
-  const res = await handleModelLeaderboard();
+  const supabase = supabaseSelectMock({
+    model_evaluations: [{ model_name: 'A', is_correct: true }],
+    human_model_evaluations: [],
+  });
+  const res = await handleModelLeaderboard(supabase);
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.ok(Array.isArray(data));

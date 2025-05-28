@@ -11,7 +11,7 @@ function loadRoute(tsPath) {
   const src = fs.readFileSync(tsPath, 'utf8');
   const compiled = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
   const outDir = path.join('.test-tmp');
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  fs.mkdirSync(outDir, { recursive: true });
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');
   fs.writeFileSync(outPath, compiled);
@@ -61,7 +61,10 @@ test('download-dataset inserts row for authorized user', async () => {
 
 test('human-model-evaluations unauthorized', async () => {
   const { handleHumanModelEvaluation } = loadRoute('src/app/api/human-model-evaluations/route.ts');
-  const res = await handleHumanModelEvaluation(supabaseMock(null), { prompt_id: 'p1', is_correct: true });
+  const res = await handleHumanModelEvaluation(
+    supabaseMock(null),
+    { promptId: 'p1', modelName: 'm1', guessCorrect: true }
+  );
   assert.equal(res.status, 401);
 });
 
@@ -72,10 +75,15 @@ test('human-model-evaluations inserts row', async () => {
     supabaseMock({ user: { id: 'u1' } }, (data) => {
       inserted = data;
     }),
-    { prompt_id: 'p1', is_correct: false }
+    { promptId: 'p1', modelName: 'm2', guessCorrect: false }
   );
   assert.equal(res.status, 200);
-  assert.deepEqual(inserted, { user_id: 'u1', prompt_id: 'p1', is_correct: false });
+  assert.deepEqual(inserted, {
+    user_id: 'u1',
+    prompt_id: 'p1',
+    model_name: 'm2',
+    guess_correct: false,
+  });
 });
 
 test('model-leaderboard aggregates results', async () => {
