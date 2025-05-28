@@ -75,7 +75,12 @@ test('human-model-evaluations inserts row', async () => {
     { prompt_id: 'p1', is_correct: false }
   );
   assert.equal(res.status, 200);
-  assert.deepEqual(inserted, { user_id: 'u1', prompt_id: 'p1', is_correct: false });
+  assert.deepEqual(inserted, {
+    user_id: 'u1',
+    prompt_id: 'p1',
+    model_name: undefined,
+    guess_correct: false,
+  });
 });
 
 test('model-leaderboard aggregates results', async () => {
@@ -98,4 +103,36 @@ test('model-leaderboard aggregates results', async () => {
   assert.deepEqual(body.map((r) => r.model), ['A', 'B']);
   assert.ok(Math.abs(body[0].winRate - 2 / 3) < 1e-6);
   assert.ok(Math.abs(body[1].winRate - 1 / 3) < 1e-6);
+});
+
+test('model-leaderboard paginates', async () => {
+  const { handleModelLeaderboard, leaderboardCache } = loadRoute('src/app/api/model-leaderboard/route.ts');
+  leaderboardCache.clear();
+  const supabase = supabaseSelectMock({
+    model_evaluations: [
+      { model_name: 'A', is_correct: true },
+      { model_name: 'B', is_correct: true },
+      { model_name: 'C', is_correct: false },
+    ],
+    human_model_evaluations: [],
+  });
+  const res = await handleModelLeaderboard(supabase, 1, 2);
+  const body = await res.json();
+  assert.equal(body.length, 2);
+});
+
+test('model-leaderboard caches queries', async () => {
+  const { handleModelLeaderboard, leaderboardCache } = loadRoute('src/app/api/model-leaderboard/route.ts');
+  leaderboardCache.clear();
+  const supabase = supabaseSelectMock({
+    model_evaluations: [{ model_name: 'A', is_correct: true }],
+    human_model_evaluations: [],
+  });
+  const res1 = await handleModelLeaderboard(supabase, 1, 1);
+  const first = await res1.json();
+  // mutate the mock to return empty arrays
+  supabase.from = () => ({ select: async () => ({ data: [], error: null }) });
+  const res2 = await handleModelLeaderboard(supabase, 1, 1);
+  const second = await res2.json();
+  assert.deepEqual(second, first);
 });

@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Database Performance
+
+- Added several indexes to frequently queried columns for faster lookups. See `migrations/20240606_add_indexes.sql`.
+- Leaderboard API now caches results for one minute and supports pagination via `page` and `pageSize` query parameters.
+- Supabase client initialization uses a shared instance to reduce connection overhead.
