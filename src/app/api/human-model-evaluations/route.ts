@@ -3,15 +3,9 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export interface HumanModelPayload {
-  promptId: string;
-  modelName: string;
-  guessCorrect: boolean;
-}
-
 export async function handleHumanModelEvaluation(
   supabase: SupabaseClient,
-  payload: HumanModelPayload
+  { prompt_id, is_correct, model_name = '' }: { prompt_id: string; is_correct: boolean; model_name?: string },
 ) {
   const {
     data: { session },
@@ -21,13 +15,11 @@ export async function handleHumanModelEvaluation(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { promptId, modelName, guessCorrect } = payload;
-
   const { error } = await supabase.from('human_model_evaluations').insert({
     user_id: session.user.id,
-    prompt_id: promptId,
-    model_name: modelName,
-    guess_correct: guessCorrect,
+    prompt_id,
+    model_name,
+    guess_correct: is_correct,
   });
 
   if (error) {
@@ -37,8 +29,6 @@ export async function handleHumanModelEvaluation(
 
   return NextResponse.json({ success: true });
 }
-
-
 
 export async function POST(req: Request) {
   const cookieStorePromise = cookies();
@@ -64,10 +54,14 @@ export async function POST(req: Request) {
     }
   );
   try {
-    const payload = await req.json();
-    return handleHumanModelEvaluation(supabase, payload);
+    const { promptId, modelName = '', guessCorrect } = await req.json();
+    return handleHumanModelEvaluation(supabase, {
+      prompt_id: promptId,
+      model_name: modelName,
+      is_correct: guessCorrect,
+    });
   } catch (err) {
-    console.error(err);
+    console.error('Error in human-model-evaluations API:', err);
     return NextResponse.json({ error: 'Failed to save evaluation' }, { status: 500 });
   }
 }

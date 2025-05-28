@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { useState, useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -50,7 +51,7 @@ export function HumanEvaluationArena() {
     right: "",
   });
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [pendingScoreUpdate, setPendingScoreUpdate] = useState<boolean | null>(
@@ -63,7 +64,9 @@ export function HumanEvaluationArena() {
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
 
-  const { user, profile, incrementScore, addViewedPrompt } = useUser();
+  const { user, profile, incrementScore, addViewedPrompt, isLoading } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const handleHighlight = () => {
     if (typeof window === "undefined") return;
@@ -114,7 +117,7 @@ export function HumanEvaluationArena() {
 
   const fetchRandomPrompt = async () => {
     setError(null);
-    setIsLoading(true);
+    setLoading(true);
 
     try {
       // Get a random prompt without filtering for previously viewed ones
@@ -131,13 +134,13 @@ export function HumanEvaluationArena() {
             : `Database error: ${error.message}`;
         setError(errorMessage);
         console.error("Error details:", error);
-        setIsLoading(false);
+        setLoading(false);
         return;
       }
 
       if (!data || data.length === 0) {
         setError("No prompt found. Please try again.");
-        setIsLoading(false);
+        setLoading(false);
         return;
       }
 
@@ -167,7 +170,7 @@ export function HumanEvaluationArena() {
       setError(`Failed to fetch prompt: ${errorMessage}`);
       console.error("Error fetching prompt:", error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -175,6 +178,15 @@ export function HumanEvaluationArena() {
     fetchRandomPrompt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (!user && !isLoading) {
+    return (
+      <div className="text-center py-10">
+        <p className="mb-4">You must be logged in to evaluate.</p>
+        <Button onClick={() => router.push(`/login?redirect=${encodeURIComponent(pathname)}`)}>Log in</Button>
+      </div>
+    );
+  }
 
   const handleSelection = (text: string) => {
     if (selectedText || !prompt) return;
@@ -462,7 +474,7 @@ export function HumanEvaluationArena() {
           )}
         </div>
 
-        {isLoading ? (
+        {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
