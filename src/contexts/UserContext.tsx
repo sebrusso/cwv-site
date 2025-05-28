@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Session, User } from "@supabase/supabase-js";
 
@@ -9,6 +10,13 @@ type UserProfile = {
   username: string;
   score: number;
   viewed_prompts: string[];
+  age_range?: string | null;
+  education_level?: string | null;
+  first_language?: string | null;
+  literature_interest?: string | null;
+  reading_habits?: string | null;
+  writing_background?: string | null;
+  demographics_completed?: boolean;
 };
 
 // Define an error type for the signIn function
@@ -38,6 +46,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     // Get initial session
@@ -85,6 +95,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       setProfile(data);
+      if (!data.demographics_completed && pathname !== "/onboarding") {
+        router.push("/onboarding");
+      }
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
