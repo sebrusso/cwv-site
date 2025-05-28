@@ -27,14 +27,16 @@ function loadRoute(tsPath) {
 
 test('generate-openai truncates incomplete sentences', async () => {
   const { handleGenerateOpenAI } = loadRoute('src/app/api/generate-openai/route.ts');
-  const fetchMock = async () => ({
-    ok: true,
-    json: async () => ({
-      choices: [
-        { message: { content: 'Hello world. This is partial' }, finish_reason: 'length' },
-      ],
-    }),
-  });
+  const fetchMock = async (url, init) => {
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [
+          { message: { content: 'Hello world. This is partial' }, finish_reason: 'length' },
+        ],
+      }),
+    };
+  };
   const res = await handleGenerateOpenAI(fetchMock, { prompt: 'test', model: 'gpt' });
   assert.equal(res.status, 200);
   const body = await res.json();
@@ -78,30 +80,43 @@ test('generate-live-comparison trims both responses', async () => {
   };
   
   let call = 0;
-  const openai = {
-    chat: {
-      completions: {
-        create: async () => {
-          call++;
-          return { 
-            choices: [
-              {
-                message: {
-                  content: call === 1 ? 'A sentence. And partial' : 'Another full sentence.',
-                },
-                finish_reason: 'length',
-              },
-            ]
-          };
-        }
-      }
-    }
+  const fetchMock = async () => {
+    call++;
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: { content: call === 1 ? 'A sentence. And partial' : 'Another full sentence.' },
+            finish_reason: 'length',
+          },
+        ],
+      }),
+    };
   };
-  
-  const res = await handleGenerateLiveComparison(supabase, openai, { prompt_db_id: 'p1' });
+  const originalFetch = global.fetch;
+  // @ts-ignore
+  global.fetch = fetchMock;
+  const res = await handleGenerateLiveComparison(supabase, { prompt_db_id: 'p1' });
+  global.fetch = originalFetch;
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.response_A, 'A sentence.');
   assert.equal(body.response_B, 'Another full sentence.');
 });
 
+
+test('generate-openai uses provided parameters', async () => {
+  const { handleGenerateOpenAI } = loadRoute('src/app/api/generate-openai/route.ts');
+  let captured;
+  const fetchMock = async (url, init) => {
+    captured = JSON.parse(init.body);
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Done.' }, finish_reason: 'stop' }] }),
+    };
+  };
+  const res = await handleGenerateOpenAI(fetchMock, { prompt: 'hi', model: 'gpt', params: { temperature: 0.9 } });
+  assert.equal(res.status, 200);
+  assert.equal(captured.temperature, 0.9);
+});

@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/contexts/ToastContext";
 
 import { ReportContentButton } from "./ReportContentButton";
+import { AVAILABLE_MODELS } from "@/lib/models/modelConfig";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,7 +24,7 @@ interface PromptRow {
   chosen: string;
 }
 
-const MODELS = ["gpt-4o", "gpt-4.5-turbo", "gpt-4o-mini", "gpt-4.0"];
+const MODELS = AVAILABLE_MODELS;
 
 export function HumanMachineArena() {
   const [prompts, setPrompts] = useState<PromptRow[]>([]);

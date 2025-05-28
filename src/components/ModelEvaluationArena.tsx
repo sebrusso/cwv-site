@@ -104,7 +104,14 @@ export function ModelEvaluationArena() {
       } catch (err) {
         console.error("Failed to fetch available models:", err);
         // Fallback models if API fails
-        setAvailableModels(['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo']);
+        setAvailableModels([
+          'gpt-4o',
+          'gpt-4o-mini',
+          'gpt-4-turbo',
+          'gpt-3.5-turbo',
+          'claude-3-opus',
+          'gemini-pro',
+        ]);
       }
     };
 
