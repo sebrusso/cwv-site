@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/UserContext";
 import { LogOut, User as UserIcon } from "lucide-react";
@@ -16,7 +15,6 @@ import {
 export function UserProfileButton() {
   const { user, profile, signOut, isLoading } = useUser();
   const [isOpen, setIsOpen] = useState(false);
-  const pathname = usePathname();
 
   const handleSignOut = async () => {
     await signOut();
@@ -71,7 +69,7 @@ export function UserProfileButton() {
             </Button>
           </div>
         ) : (
-          <LoginForm onClose={handleClosePopover} redirectPath={pathname} />
+          <LoginForm onClose={handleClosePopover} />
         )}
       </PopoverContent>
     </Popover>

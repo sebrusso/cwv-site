@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Session, User } from "@supabase/supabase-js";
@@ -34,8 +34,7 @@ type UserContextType = {
   signIn: (email: string, redirectPath?: string) => Promise<{ error: AuthError | null }>; // Keep redirectPath for OTP, even if type in main differs, the implementation handles it.
   signInWithPassword: (
     email: string,
-    password: string,
-    remember?: boolean
+    password: string
   ) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
@@ -54,38 +53,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setIsLoading(false);
-      }
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-        setIsLoading(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       console.log('Fetching profile for user:', userId);
       
@@ -116,9 +84,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             setProfile(retryData);
             
             // Check if onboarding redirect is needed
-            const protectedPaths = ["/onboarding", "/model-evaluation", "/human-machine", "/leaderboard", "/dashboard", "/resources"];
-            const isOnProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
-            
             if (!retryData.demographics_completed && pathname === "/") {
               console.log("Redirecting to onboarding from home page");
               router.push("/onboarding");
@@ -193,7 +158,38 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pathname, router, user?.email]);
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
 
   const signIn = async (email: string, redirectPath?: string) => {
     setIsLoading(true);
@@ -227,8 +223,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithPassword = async (
     email: string,
-    password: string,
-    remember?: boolean // Add remember parameter here to match type
+    password: string
   ) => {
     setIsLoading(true);
     try {

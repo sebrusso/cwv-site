@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { truncateToSentence, isValidLength } from '../../../lib/utils';
+import { isValidLength } from '../../../lib/utils';
+import { generateText } from '../../../lib/models/aiService';
 
-export async function handleGenerateOpenAI(
+async function handleGenerateOpenAI(
   fetchFn: typeof fetch,
-  { prompt, model }: { prompt: string; model: string },
+  { prompt, model, params }: { prompt: string; model: string; params?: { temperature?: number; max_tokens?: number } },
 ) {
   if (!isValidLength(prompt, 1, 500)) {
     return NextResponse.json(
@@ -11,48 +12,19 @@ export async function handleGenerateOpenAI(
       { status: 400 },
     );
   }
-  const res = await fetchFn('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are an assistant generating a short creative writing sample based on the user prompt.',
-        },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 256,
-      stop: ['\n\n'],
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    return NextResponse.json({ error: text }, { status: 500 });
+  try {
+    const text = await generateText(fetchFn, { prompt, model, params });
+    return NextResponse.json({ text });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-  const data = await res.json();
-  const choice = data.choices?.[0] || {};
-  const text = choice.message?.content || '';
-  const { text: sentence } = truncateToSentence(text);
-  if (!sentence) {
-    return NextResponse.json(
-      { error: 'Generation ended mid-sentence' },
-      { status: 500 },
-    );
-  }
-  return NextResponse.json({ text: sentence });
 }
 
 export async function POST(req: Request) {
   try {
-    const { prompt, model } = await req.json();
-    return handleGenerateOpenAI(fetch, { prompt, model });
+    const { prompt, model, params } = await req.json();
+    return handleGenerateOpenAI(fetch, { prompt, model, params });
   } catch (err) {
     console.error(err);
     return NextResponse.json(
