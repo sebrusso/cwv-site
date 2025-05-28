@@ -8,9 +8,10 @@ import Link from "next/link";
 
 interface LoginFormProps {
   onClose?: () => void;
+  redirectPath?: string;
 }
 
-export function LoginForm({ onClose }: LoginFormProps) {
+export function LoginForm({ onClose, redirectPath }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);

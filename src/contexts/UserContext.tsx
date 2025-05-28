@@ -24,7 +24,7 @@ type UserContextType = {
   profile: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
-  signIn: (email: string) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, redirectPath?: string) => Promise<{ error: AuthError | null }>; // Keep redirectPath for OTP, even if type in main differs, the implementation handles it.
   signInWithPassword: (
     email: string,
     password: string,
@@ -98,12 +98,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signIn = async (email: string) => {
+  const signIn = async (email: string, redirectPath?: string) => {
     setIsLoading(true);
     try {
       // Use NEXT_PUBLIC_SITE_URL environment variable if available, otherwise fall back to window.location.origin
-      const redirectUrl =
+      const baseUrl =
         process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const redirectUrl = redirectPath
+        ? `${baseUrl}/auth/callback?redirect=${encodeURIComponent(redirectPath)}`
+        : baseUrl;
 
       const { error } = await supabase.auth.signInWithOtp({
         email,
@@ -126,7 +129,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithPassword = async (
     email: string,
-    password: string
+    password: string,
+    remember?: boolean // Add remember parameter here to match type
   ) => {
     setIsLoading(true);
     try {

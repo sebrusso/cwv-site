@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -63,7 +64,7 @@ export function ModelEvaluationArena() {
   });
   const [currentEvaluationId, setCurrentEvaluationId] = useState<string | null>(null); // For storing model_evaluations.id if needed for rationale
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [showResultFeedback, setShowResultFeedback] = useState(false); // To show some feedback after selection
@@ -74,7 +75,9 @@ export function ModelEvaluationArena() {
   const leftResponseRef = useRef<HTMLDivElement>(null);
   const rightResponseRef = useRef<HTMLDivElement>(null);
 
-  const { user } = useUser();
+  const { user, isLoading: userIsLoading } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const getRandomPromptId = async () => {
     const { count, error: countError } = await supabase
@@ -122,7 +125,7 @@ export function ModelEvaluationArena() {
     console.log("Current Supabase auth session:", supabase.auth.getSession()); // Log current session
 
     setError(null);
-    setIsLoading(true);
+    setLoading(true);
     setCurrentDisplayData(null);
     setResponses({ left: "", right: "" });
     setSelectedResponseFullText(null);
@@ -132,10 +135,8 @@ export function ModelEvaluationArena() {
     setShowRationale(false);
     setRationale("");
     setShowResultFeedback(false);
-
-
     try {
-      const id = promptId || (await getRandomPromptId());
+      const id = promptId || prefetchedPromptId || (await getRandomPromptId());
       const liveDataFromApi = await fetchComparison(id);
       
       setCurrentDisplayData({
@@ -167,14 +168,21 @@ export function ModelEvaluationArena() {
       setError(`Failed to fetch new comparison: ${errorMessage}`);
       console.error("Error in fetchNewLiveComparison:", err);
     } finally {
-      setIsLoading(false);
+      setLoading(false); // Use local loading state setter
       void prefetchNextComparison();
     }
-  }, [prefetchNextComparison, user]);
+  }, [prefetchNextComparison, user, prefetchedPromptId]);
 
   useEffect(() => {
-    void fetchNewLiveComparison();
-  }, [fetchNewLiveComparison]); // Fetch on initial load
+    // Only fetch if user is loaded and present, or if auth is not enforced for this component path (e.g. guest mode)
+    if (!userIsLoading && user) {
+      void fetchNewLiveComparison();
+    } else if (!userIsLoading && !user) {
+      // User is loaded, but not logged in. Handled by the redirect logic below.
+      // No need to fetch if we are about to redirect.
+    }
+    // If userIsLoading, wait for user status to resolve.
+  }, [fetchNewLiveComparison, user, userIsLoading]);
 
   const handleSelection = (side: "left" | "right") => {
     if (selectedResponseFullText || !currentDisplayData) return; // Already selected or no data
@@ -282,11 +290,24 @@ export function ModelEvaluationArena() {
     setShowRationale(false);
     setRationale("");
     // Consider if skipping rationale should immediately load the next prompt
-    // handleNextPrompt(); 
+    // handleNextPrompt();
   };
 
   // --- UI Rendering ---
-  if (isLoading && !currentDisplayData) {
+  // Auth Guard: Redirect to login if user is not loaded or not logged in
+  useEffect(() => {
+    if (!userIsLoading && !user) {
+      router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [user, userIsLoading, router, pathname]);
+
+  if (userIsLoading || (!user && !userIsLoading)) {
+    // Show loading indicator while user status is being determined or if redirecting
+    return <div className="text-center p-10">Loading user information...</div>; 
+  }
+  
+  // If user is loaded and present, continue rendering the component
+  if (loading && !currentDisplayData) {
     return <div className="text-center p-10">Loading new evaluation...</div>;
   }
 
@@ -301,7 +322,7 @@ export function ModelEvaluationArena() {
     );
   }
 
-  if (!currentDisplayData && !isLoading) {
+  if (!currentDisplayData && !loading) {
     return (
       <div className="text-center p-10">
         No prompts available. Please try again later.
