@@ -1,21 +1,23 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-interface EvalRow {
-  model_name: string;
-  is_correct: boolean;
-}
-
-export async function handleModelLeaderboard(supabase: SupabaseClient) {
-  const { data: modelEval, error: modelErr } = await supabase
+export async function handleModelLeaderboard(supabase?: SupabaseClient) {
+  const client =
+    supabase ||
+    createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+  const { data: modelEval, error: modelErr } = await client
     .from('model_evaluations')
     .select('model_name,is_correct');
   if (modelErr) {
     return NextResponse.json({ error: modelErr.message }, { status: 500 });
   }
-  const { data: humanEval, error: humanErr } = await supabase
+  const { data: humanEval, error: humanErr } = await client
     .from('human_model_evaluations')
     .select('model_name,is_correct');
   if (humanErr) {

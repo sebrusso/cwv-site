@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ReportContentButton } from "./ReportContentButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
 
@@ -91,25 +92,23 @@ export function ModelEvaluationArena() {
 
 
     try {
-      // 1. Fetch a random prompt_id from the main dataset table 'writingprompts-pairwise-test'
-      const { count, error: countError } = await supabase
-        .from("writingprompts-pairwise-test")
-        .select("id", { count: "exact", head: true });
-
-      if (countError) throw countError;
-      if (!count || count === 0) {
-        setError("No source prompts available in the 'writingprompts-pairwise-test' database table.");
-        setIsLoading(false);
-        return;
+      const { data: flagged } = await supabase
+        .from("content_reports")
+        .select("content_id")
+        .eq("content_type", "prompt")
+        .eq("resolved", false);
+      const excluded = (flagged || []).map((r) => r.content_id);
+      let query = supabase.from("writingprompts-pairwise-test").select("id").limit(1);
+      if (excluded.length > 0) {
+        query = query.not("id", "in", `(${excluded.join(",")})`);
       }
-      const randomOffset = Math.floor(Math.random() * count);
-      const { data: randomPromptEntry, error: randomPromptError } = await supabase
-        .from("writingprompts-pairwise-test")
-        .select("id")
-        .range(randomOffset, randomOffset)
-        .single();
+      const { data: randomPromptEntry, error: randomPromptError } = await query.order("id", {
+        ascending: Math.random() > 0.5,
+      }).single();
 
-      if (randomPromptError || !randomPromptEntry) throw randomPromptError || new Error("Failed to fetch random prompt ID.");
+      if (randomPromptError || !randomPromptEntry) {
+        throw randomPromptError || new Error("Failed to fetch random prompt ID.");
+      }
 
       const sourcePromptDbId = randomPromptEntry.id;
 
@@ -162,6 +161,7 @@ export function ModelEvaluationArena() {
 
   useEffect(() => {
     fetchNewLiveComparison();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Fetch on initial load
 
   const handleSelection = (side: "left" | "right") => {
@@ -306,31 +306,40 @@ export function ModelEvaluationArena() {
         <div className="w-full p-4 border rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800">
           <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Prompt:</h3>
           <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{currentDisplayData.source_prompt_text}</p>
+          <div className="mt-2">
+            <ReportContentButton contentId={currentDisplayData.source_prompt_db_id} contentType="prompt" />
+          </div>
         </div>
       )}
 
-      {responses.left && responses.right && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-          <Card
-            ref={leftResponseRef}
-            className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer overflow-y-auto max-h-96 \
+        {responses.left && responses.right && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            <Card
+              ref={leftResponseRef}
+              className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer overflow-y-auto max-h-96 \
                         ${pendingSelectionSide === "left" ? "ring-4 ring-indigo-400 dark:ring-indigo-600 border-indigo-500 dark:border-indigo-700" : "border-gray-300 dark:border-gray-700"} \
                         ${isSelectionMade ? "opacity-70 cursor-not-allowed" : "hover:border-indigo-500 dark:hover:border-indigo-400"}`}
-            onClick={() => !isSelectionMade && handleSelection("left")}
-          >
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.left}</p>
-          </Card>
-          <Card
-            ref={rightResponseRef}
-            className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer overflow-y-auto max-h-96 \
+              onClick={() => !isSelectionMade && handleSelection("left")}
+            >
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.left}</p>
+            </Card>
+            <Card
+              ref={rightResponseRef}
+              className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer overflow-y-auto max-h-96 \
                         ${pendingSelectionSide === "right" ? "ring-4 ring-indigo-400 dark:ring-indigo-600 border-indigo-500 dark:border-indigo-700" : "border-gray-300 dark:border-gray-700"} \
                         ${isSelectionMade ? "opacity-70 cursor-not-allowed" : "hover:border-indigo-500 dark:hover:border-indigo-400"}`}
-            onClick={() => !isSelectionMade && handleSelection("right")}
-          >
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.right}</p>
-          </Card>
-        </div>
-      )}
+              onClick={() => !isSelectionMade && handleSelection("right")}
+            >
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.right}</p>
+            </Card>
+          </div>
+        )}
+
+        {currentDisplayData && (
+          <div className="mt-2">
+            <ReportContentButton contentId={currentDisplayData.live_generation_id} contentType="generation" />
+          </div>
+        )}
       
       {pendingSelectionSide && !isSelectionMade && (
         <div className="mt-4 text-center">

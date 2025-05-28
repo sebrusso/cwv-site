@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ReportContentButton } from "./ReportContentButton";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 
@@ -117,12 +118,23 @@ export function HumanEvaluationArena() {
     setIsLoading(true);
 
     try {
-      // Get a random prompt without filtering for previously viewed ones
-      const { data, error } = await supabase
+      const { data: flagged } = await supabase
+        .from("content_reports")
+        .select("content_id")
+        .eq("content_type", "prompt")
+        .eq("resolved", false);
+
+      const excluded = (flagged || []).map((r) => r.content_id);
+      let query = supabase
         .from("writingprompts-pairwise-test")
         .select("*")
-        .limit(1)
-        .order("id", { ascending: Math.random() > 0.5 });
+        .limit(1);
+      if (excluded.length > 0) {
+        query = query.not("id", "in", `(${excluded.join(",")})`);
+      }
+      const { data, error } = await query.order("id", {
+        ascending: Math.random() > 0.5,
+      });
 
       if (error) {
         const errorMessage =
@@ -477,6 +489,9 @@ export function HumanEvaluationArena() {
                 <h2 className="text-base font-normal leading-relaxed text-gray-700 dark:text-gray-300">
                   {prompt.prompt}
                 </h2>
+              </div>
+              <div className="mt-2">
+                <ReportContentButton contentId={prompt.id} contentType="prompt" />
               </div>
             </div>
 
