@@ -14,6 +14,14 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+function similarity(a: string, b: string) {
+  const setA = new Set(a.split(/\s+/));
+  const setB = new Set(b.split(/\s+/));
+  const intersection = Array.from(setA).filter((w) => setB.has(w)).length;
+  const union = new Set([...setA, ...setB]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
 interface WritingPrompt {
   id: string;
   prompt: string;
@@ -59,6 +67,8 @@ export function HumanEvaluationArena() {
   const [showUpvotes, setShowUpvotes] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
   const [showHighlightTip, setShowHighlightTip] = useState(false);
+
+  const [evaluationStart, setEvaluationStart] = useState<number>(0);
 
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
@@ -153,6 +163,8 @@ export function HumanEvaluationArena() {
         right: isChosenLeft ? promptData.rejected : promptData.chosen,
       });
 
+      setEvaluationStart(Date.now());
+
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
       if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
@@ -227,6 +239,23 @@ export function HumanEvaluationArena() {
     setPendingSelection(null);
     setShowUpvotes(false); // Reset upvotes visibility
     setShowRationale(true);
+
+    const evalTime = Date.now() - evaluationStart;
+    const sim = similarity(texts.left, texts.right);
+    const confidence = Math.max(0, 1 - evalTime / 30000);
+    try {
+      await fetch('/api/evaluation-quality', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          evaluationTime: evalTime,
+          promptSimilarity: sim,
+          confidenceScore: confidence,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to record quality metrics', err);
+    }
   };
 
   const handleNextPrompt = async () => {

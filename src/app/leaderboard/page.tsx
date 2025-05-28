@@ -16,6 +16,8 @@ function winRate(entry: Entry) {
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [mode, setMode] = useState('all');
+  const [quality, setQuality] = useState<{ evaluationTime: number; promptSimilarity: number; confidenceScore: number } | null>(null);
+  const [qualityError, setQualityError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -27,6 +29,17 @@ export default function LeaderboardPage() {
         }
       } catch {
         // ignore errors for now
+      }
+      try {
+        const qRes = await fetch('/api/evaluation-quality');
+        if (qRes.ok) {
+          const qData = await qRes.json();
+          setQuality(qData);
+        } else {
+          setQualityError('Failed to load metrics');
+        }
+      } catch {
+        setQualityError('Failed to load metrics');
       }
     };
     fetchData();
@@ -80,6 +93,16 @@ export default function LeaderboardPage() {
           </tbody>
         </table>
       </div>
+      {quality && (
+        <div className="mt-4 text-sm">
+          <p>Average evaluation time: {quality.evaluationTime.toFixed(0)} ms</p>
+          <p>Average prompt similarity: {(quality.promptSimilarity * 100).toFixed(1)}%</p>
+          <p>Average confidence score: {quality.confidenceScore.toFixed(2)}</p>
+        </div>
+      )}
+      {qualityError && (
+        <div className="text-red-500 text-sm">{qualityError}</div>
+      )}
     </div>
   );
 }
