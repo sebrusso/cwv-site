@@ -308,3 +308,26 @@ CREATE POLICY "Users can insert their own model writing rationale"
 CREATE POLICY "Users can view their own model writing rationales"
   ON model_writing_rationales FOR SELECT
   USING (auth.uid() = user_id);
+
+-- Create content_reports table
+CREATE TABLE IF NOT EXISTS content_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  content_type TEXT NOT NULL,
+  content_id UUID NOT NULL,
+  reason TEXT,
+  resolved BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on content_reports
+ALTER TABLE content_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert their own content reports"
+  ON content_reports FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own content reports"
+  ON content_reports FOR SELECT
+  USING (auth.uid() = user_id);
+

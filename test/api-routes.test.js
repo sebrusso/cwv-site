@@ -229,3 +229,22 @@ test('user-dashboard aggregates user stats', async () => {
   assert.equal(body.total.correct, 1);
   assert.equal(body.total.total, 2);
 });
+
+test('content-report unauthorized', async () => {
+  const { handleContentReport } = loadRoute('src/app/api/content-report/route.ts');
+  const res = await handleContentReport(supabaseMock(null), { contentType: 'prompt', contentId: 'p1' });
+  assert.equal(res.status, 401);
+});
+
+test('content-report inserts row', async () => {
+  let inserted;
+  const { handleContentReport } = loadRoute('src/app/api/content-report/route.ts');
+  const res = await handleContentReport(
+    supabaseMock({ user: { id: 'u1' } }, (data) => {
+      inserted = data;
+    }),
+    { contentType: 'prompt', contentId: 'p1', reason: 'bad' }
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(inserted, { user_id: 'u1', content_type: 'prompt', content_id: 'p1', reason: 'bad' });
+});

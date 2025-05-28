@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/contexts/ToastContext";
 
+import { ReportContentButton } from "./ReportContentButton";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -47,10 +48,20 @@ export function HumanMachineArena() {
 
   useEffect(() => {
     const loadPrompts = async () => {
-      const { data } = await supabase
+      const { data: flagged } = await supabase
+        .from("content_reports")
+        .select("content_id")
+        .eq("content_type", "prompt")
+        .eq("resolved", false);
+      const excluded = (flagged || []).map((r) => r.content_id);
+      let query = supabase
         .from("writingprompts-pairwise-test")
         .select("id,prompt,chosen")
         .limit(50);
+      if (excluded.length > 0) {
+        query = query.not("id", "in", `(${excluded.join(",")})`);
+      }
+      const { data } = await query;
       setPrompts(data || []);
     };
     loadPrompts();
@@ -71,14 +82,20 @@ export function HumanMachineArena() {
     setResult(null);
     let row: PromptRow | null = null;
     if (selectedId === "random") {
-      const { count } = await supabase
-        .from("writingprompts-pairwise-test")
-        .select("id", { count: "exact", head: true });
-      const offset = Math.floor(Math.random() * (count || 1));
-      const { data } = await supabase
+      const { data: flagged } = await supabase
+        .from("content_reports")
+        .select("content_id")
+        .eq("content_type", "prompt")
+        .eq("resolved", false);
+      const excluded = (flagged || []).map((r) => r.content_id);
+      let query = supabase
         .from("writingprompts-pairwise-test")
         .select("id,prompt,chosen")
-        .range(offset, offset);
+        .limit(1);
+      if (excluded.length > 0) {
+        query = query.not("id", "in", `(${excluded.join(",")})`);
+      }
+      const { data } = await query.order("id", { ascending: Math.random() > 0.5 });
       if (data && data.length > 0) row = data[0];
     } else {
       const { data } = await supabase
@@ -175,6 +192,11 @@ export function HumanMachineArena() {
           >
             <p className="whitespace-pre-wrap text-sm leading-relaxed">{texts.right}</p>
           </Card>
+        </div>
+      )}
+      {currentPromptId && (
+        <div className="mt-2">
+          <ReportContentButton contentId={currentPromptId} contentType="prompt" />
         </div>
       )}
       {result !== null && (
