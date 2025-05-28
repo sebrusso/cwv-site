@@ -1,10 +1,14 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import { useUser } from "@/contexts/UserContext";
+import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TextPane } from "@/components/TextPane";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/contexts/ToastContext";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,6 +28,7 @@ export function HumanMachineArena() {
   const [selectedId, setSelectedId] = useState<string | "random">("random");
   const [model, setModel] = useState<string>(MODELS[0]);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null);
   const [texts, setTexts] = useState<{ left: string; right: string }>({
     left: "",
@@ -34,9 +39,11 @@ export function HumanMachineArena() {
     right: "ai",
   });
   const [result, setResult] = useState<boolean | null>(null);
+  const addToast = useToast();
 
-  const leftResponseRef = useRef<HTMLDivElement>(null);
-  const rightResponseRef = useRef<HTMLDivElement>(null);
+  const { user, isLoading } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const loadPrompts = async () => {
@@ -49,8 +56,18 @@ export function HumanMachineArena() {
     loadPrompts();
   }, []);
 
+  if (!user && !isLoading) {
+    return (
+      <div className="text-center py-10">
+        <p className="mb-4">You must be logged in to evaluate.</p>
+        <Button onClick={() => router.push(`/login?redirect=${encodeURIComponent(pathname)}`)}>Log in</Button>
+      </div>
+    );
+  }
+
   const fetchSample = async () => {
     setLoading(true);
+    setProgress(20);
     setResult(null);
     let row: PromptRow | null = null;
     if (selectedId === "random") {
@@ -76,15 +93,18 @@ export function HumanMachineArena() {
       return;
     }
     setCurrentPromptId(row.id);
+    setProgress(60);
     const aiRes = await fetch("/api/generate-openai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: row.prompt, model }),
     });
     const { text } = await aiRes.json();
+    setProgress(80);
     const isHumanLeft = Math.random() < 0.5;
     setTexts({ left: isHumanLeft ? row.chosen : text, right: isHumanLeft ? text : row.chosen });
     setMapping({ left: isHumanLeft ? "human" : "ai", right: isHumanLeft ? "ai" : "human" });
+    setProgress(100);
     setLoading(false);
   };
 
@@ -103,8 +123,10 @@ export function HumanMachineArena() {
             guessCorrect: isCorrect,
           }),
         });
+        addToast("Evaluation recorded", "success");
       } catch (err) {
         console.error("Failed to log evaluation", err);
+        addToast("Failed to log evaluation", "error");
       }
     }
     if (isCorrect && typeof window !== "undefined") {
@@ -114,6 +136,7 @@ export function HumanMachineArena() {
 
   return (
     <div className="flex flex-col gap-4 items-center">
+      {loading && <Progress value={progress} className="w-full" />}
       <div className="flex flex-wrap gap-2">
         <select
           value={selectedId}
@@ -135,7 +158,7 @@ export function HumanMachineArena() {
           ))}
         </select>
         <Button onClick={fetchSample} disabled={loading}>
-          {loading ? "Loading..." : "Generate"}
+          {loading ? <Skeleton className="h-5 w-20" /> : "Generate"}
         </Button>
       </div>
       {texts.left && (
@@ -144,25 +167,13 @@ export function HumanMachineArena() {
             className="p-4 cursor-pointer hover:ring-2 hover:ring-indigo-500"
             onClick={() => selectSide("left")}
           >
-            <TextPane
-              ref={leftResponseRef}
-              pairedRef={rightResponseRef}
-              text={texts.left}
-              enableHighlight
-              id="hm-left-pane"
-            />
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{texts.left}</p>
           </Card>
           <Card
             className="p-4 cursor-pointer hover:ring-2 hover:ring-indigo-500"
             onClick={() => selectSide("right")}
           >
-            <TextPane
-              ref={rightResponseRef}
-              pairedRef={leftResponseRef}
-              text={texts.right}
-              enableHighlight
-              id="hm-right-pane"
-            />
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{texts.right}</p>
           </Card>
         </div>
       )}
