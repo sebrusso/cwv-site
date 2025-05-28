@@ -14,7 +14,6 @@ type UserProfile = {
   education_level?: string | null;
   first_language?: string | null;
   literature_interest?: string | null;
-  reading_habits?: string | null;
   writing_background?: string | null;
   demographics_completed?: boolean;
 };
@@ -95,13 +94,40 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) {
-        console.error("Error fetching profile:", error);
+        // If profile doesn't exist, create a default one
+        if (error.code === 'PGRST116') { // No rows returned
+          console.log("No profile found, creating default profile");
+          const defaultProfile: UserProfile = {
+            id: userId,
+            username: user?.email || '',
+            score: 0,
+            viewed_prompts: [],
+            demographics_completed: false
+          };
+          setProfile(defaultProfile);
+          
+          // Try to create the profile in the database
+          try {
+            await supabase.from("profiles").insert(defaultProfile);
+          } catch (insertError) {
+            console.error("Error creating default profile:", insertError);
+          }
+        } else {
+          console.error("Error fetching profile:", error);
+        }
         setIsLoading(false);
         return;
       }
 
       setProfile(data);
-      if (!data.demographics_completed && pathname !== "/onboarding") {
+      // Only redirect to onboarding if:
+      // 1. Demographics not completed
+      // 2. Not already on onboarding page
+      // 3. Not on other protected paths like model-evaluation, human-machine, etc.
+      const protectedPaths = ["/onboarding", "/model-evaluation", "/human-machine", "/leaderboard", "/dashboard", "/resources"];
+      const isOnProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
+      
+      if (!data.demographics_completed && !isOnProtectedPath) {
         router.push("/onboarding");
       }
     } catch (error) {
@@ -116,7 +142,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       // Use NEXT_PUBLIC_SITE_URL environment variable if available, otherwise fall back to window.location.origin
       const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+        process.env.NEXT_PUBLIC_SITE_URL || 
+        (typeof window !== "undefined" ? window.location.origin : "");
       const redirectUrl = redirectPath
         ? `${baseUrl}/auth/callback?redirect=${encodeURIComponent(redirectPath)}`
         : baseUrl;
@@ -185,21 +212,49 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return;
+    if (!user) {
+      throw new Error('No user found');
+    }
 
     try {
-      const { error } = await supabase
+      console.log('Updating profile for user:', user.id);
+      console.log('Updates:', updates);
+      
+      // Use upsert to handle cases where profile doesn't exist yet
+      const { data, error } = await supabase
         .from("profiles")
-        .update(updates)
-        .eq("id", user.id);
+        .upsert({
+          id: user.id,
+          username: user.email || '',
+          score: 0,
+          viewed_prompts: [],
+          demographics_completed: false,
+          ...updates
+        }, {
+          onConflict: 'id'
+        })
+        .select();
+
+      console.log('Supabase response:', { data, error });
 
       if (error) {
-        throw error;
+        console.error('Supabase error details:', error);
+        throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
       }
 
-      setProfile((prev) => (prev ? { ...prev, ...updates } : null));
+      setProfile((prev) => (prev ? { ...prev, ...updates } : {
+        id: user.id,
+        username: user.email || '',
+        score: 0,
+        viewed_prompts: [],
+        demographics_completed: false,
+        ...updates
+      } as UserProfile));
+      
+      console.log('Profile updated successfully');
     } catch (error) {
       console.error("Error updating profile:", error);
+      throw error; // Re-throw so the calling component can handle it
     }
   };
 

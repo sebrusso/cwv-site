@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useRef } from "react";
 
 export type ToastType = "success" | "error";
 
@@ -18,12 +18,13 @@ const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const idCounter = useRef(0);
 
   const removeToast = (id: number) =>
     setToasts((t) => t.filter((toast) => toast.id !== id));
 
   const addToast = (message: string, type: ToastType = "success") => {
-    const id = Date.now();
+    const id = ++idCounter.current;
     setToasts((t) => [...t, { id, message, type }]);
     setTimeout(() => removeToast(id), 4000);
   };

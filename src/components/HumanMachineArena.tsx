@@ -1,13 +1,14 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TextPane } from "@/components/TextPane";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/contexts/ToastContext";
 
 import { ReportContentButton } from "./ReportContentButton";
@@ -40,8 +41,16 @@ export function HumanMachineArena() {
     right: "ai",
   });
   const [result, setResult] = useState<boolean | null>(null);
-  const addToast = useToast();
+  const [selectedText, setSelectedText] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<string>("");
+  const [pendingSelection, setPendingSelection] = useState<string | null>(null);
+  const [pendingSelectionSide, setPendingSelectionSide] = useState<"left" | "right" | null>(null);
 
+  // Add refs for synchronized scrolling
+  const leftTextRef = useRef<HTMLDivElement>(null);
+  const rightTextRef = useRef<HTMLDivElement>(null);
+
+  const addToast = useToast();
   const { user, isLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
@@ -80,6 +89,11 @@ export function HumanMachineArena() {
     setLoading(true);
     setProgress(20);
     setResult(null);
+    setSelectedText(null);
+    setHighlight("");
+    setPendingSelection(null);
+    setPendingSelectionSide(null);
+    
     let row: PromptRow | null = null;
     if (selectedId === "random") {
       const { data: flagged } = await supabase
@@ -123,11 +137,32 @@ export function HumanMachineArena() {
     setMapping({ left: isHumanLeft ? "human" : "ai", right: isHumanLeft ? "ai" : "human" });
     setProgress(100);
     setLoading(false);
+    
+    // Reset scroll positions
+    if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
+    if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
   };
 
-  const selectSide = async (side: "left" | "right") => {
+  const handleSelection = (side: "left" | "right") => {
+    if (selectedText || pendingSelection) return; // Prevent multiple selections
+    const selectedTextContent = texts[side];
+    setPendingSelection(selectedTextContent);
+    setPendingSelectionSide(side);
+  };
+
+  const confirmSelection = async () => {
+    if (!pendingSelection || !pendingSelectionSide) return;
+    
+    const side = pendingSelectionSide;
+    const selectedTextContent = pendingSelection;
+    setSelectedText(selectedTextContent);
+    
     const isCorrect = mapping[side] === "human";
     setResult(isCorrect);
+
+    // Clear pending selection
+    setPendingSelection(null);
+    setPendingSelectionSide(null);
 
     if (currentPromptId) {
       try {
@@ -149,6 +184,19 @@ export function HumanMachineArena() {
     if (isCorrect && typeof window !== "undefined") {
       void import("canvas-confetti").then((m) => m.default());
     }
+  };
+
+  const handleNextSample = () => {
+    setSelectedText(null);
+    setResult(null);
+    setHighlight("");
+    setTexts({ left: "", right: "" });
+    setCurrentPromptId(null);
+    setPendingSelection(null);
+    setPendingSelectionSide(null);
+    // Reset scroll positions
+    if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
+    if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
   };
 
   return (
@@ -178,30 +226,108 @@ export function HumanMachineArena() {
           {loading ? <Skeleton className="h-5 w-20" /> : "Generate"}
         </Button>
       </div>
+      
       {texts.left && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-          <Card
-            className="p-4 cursor-pointer hover:ring-2 hover:ring-indigo-500"
-            onClick={() => selectSide("left")}
-          >
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{texts.left}</p>
-          </Card>
-          <Card
-            className="p-4 cursor-pointer hover:ring-2 hover:ring-indigo-500"
-            onClick={() => selectSide("right")}
-          >
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{texts.right}</p>
-          </Card>
+          {/* Left Text */}
+          <div className="flex flex-col gap-4">
+            <Card
+              className={`p-4 transition-all hover:shadow-lg transform ${
+                selectedText
+                  ? ""
+                  : "cursor-pointer hover:ring-2 hover:ring-indigo-500 hover:scale-[1.02] active:scale-[0.98]"
+              } ${
+                pendingSelection && texts.left === pendingSelection
+                  ? "ring-2 ring-blue-500"
+                  : selectedText && texts.left === selectedText
+                  ? "ring-2 ring-indigo-500"
+                  : ""
+              }`}
+              onClick={() => !selectedText && handleSelection("left")}
+            >
+              <TextPane
+                ref={leftTextRef}
+                pairedRef={rightTextRef}
+                text={texts.left}
+                enableHighlight
+                id="hm-left-pane"
+                onHighlight={setHighlight}
+              />
+            </Card>
+          </div>
+
+          {/* Right Text */}
+          <div className="flex flex-col gap-4">
+            <Card
+              className={`p-4 transition-all hover:shadow-lg transform ${
+                selectedText
+                  ? ""
+                  : "cursor-pointer hover:ring-2 hover:ring-indigo-500 hover:scale-[1.02] active:scale-[0.98]"
+              } ${
+                pendingSelection && texts.right === pendingSelection
+                  ? "ring-2 ring-blue-500"
+                  : selectedText && texts.right === selectedText
+                  ? "ring-2 ring-indigo-500"
+                  : ""
+              }`}
+              onClick={() => !selectedText && handleSelection("right")}
+            >
+              <TextPane
+                ref={rightTextRef}
+                pairedRef={leftTextRef}
+                text={texts.right}
+                enableHighlight
+                id="hm-right-pane"
+                onHighlight={setHighlight}
+              />
+            </Card>
+          </div>
         </div>
       )}
+      
       {currentPromptId && (
         <div className="mt-2">
           <ReportContentButton contentId={currentPromptId} contentType="prompt" />
         </div>
       )}
+      
+      {/* Confirmation Dialog */}
+      {pendingSelection && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Card className="w-full max-w-sm p-6">
+            <div className="flex flex-col gap-4">
+              <h3 className="text-lg font-medium">Confirm your selection?</h3>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPendingSelection(null);
+                    setPendingSelectionSide(null);
+                  }}
+                  className="transform transition-all hover:scale-105 active:scale-95"
+                >
+                  Keep Reading
+                </Button>
+                <Button
+                  onClick={confirmSelection}
+                  className="transform transition-all hover:scale-105 active:scale-95"
+                >
+                  Confirm
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      
       {result !== null && (
         <div className="mt-2 text-lg font-medium">
           {result ? "Correct!" : "Wrong - try again"}
+          {selectedText && (
+            <Button onClick={handleNextSample} className="ml-4">
+              Next Sample
+            </Button>
+          )}
         </div>
       )}
     </div>

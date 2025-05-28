@@ -88,7 +88,10 @@ export const TextPane = forwardRef<HTMLDivElement, Props>(
       {wc > 200 && (
         <button
           type="button"
-          onClick={() => setExpanded(!expanded)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(!expanded);
+          }}
           className="self-start text-xs text-blue-600 hover:underline focus:outline-none"
         >
           {expanded ? "Show Less" : "Show More"}

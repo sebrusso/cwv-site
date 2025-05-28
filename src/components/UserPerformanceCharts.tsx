@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface DailyStats {
   date: string;
@@ -46,24 +47,100 @@ function BarChart({ values }: { values: number[] }) {
 
 export default function UserPerformanceCharts() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/user-dashboard");
+        setIsLoading(true);
+        setError(null);
+        
+        // Get the current session to include the access token
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          setError('No session found. Please log in again.');
+          return;
+        }
+
+        const res = await fetch("/api/user-dashboard", {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+        
         if (res.ok) {
           const json = await res.json();
           setData(json);
+        } else {
+          const errorText = await res.text();
+          setError(`Failed to fetch dashboard data: ${res.status} ${errorText}`);
         }
-      } catch {
-        // ignore errors
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setError('An unexpected error occurred while loading your dashboard.');
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchData();
   }, []);
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+          <div className="h-24 bg-gray-200 rounded"></div>
+        </div>
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+          <div className="h-24 bg-gray-200 rounded"></div>
+        </div>
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+          <div className="h-6 bg-gray-200 rounded w-24"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-4 p-6 border border-red-200 rounded-lg bg-red-50">
+        <h3 className="text-lg font-semibold text-red-800">Error Loading Dashboard</h3>
+        <p className="text-red-600">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 w-fit"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (!data) {
-    return <p>Loading...</p>;
+    return <p>No data available.</p>;
+  }
+
+  // Handle case where user has no evaluation data yet
+  if (data.daily.length === 0) {
+    return (
+      <div className="flex flex-col gap-4 p-6 border border-gray-200 rounded-lg bg-gray-50">
+        <h3 className="text-lg font-semibold text-gray-800">Welcome to Your Dashboard!</h3>
+        <p className="text-gray-600">
+          You haven't completed any evaluations yet. Start evaluating to see your performance metrics here.
+        </p>
+        <a 
+          href="/human-machine" 
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 w-fit"
+        >
+          Start Evaluating
+        </a>
+      </div>
+    );
   }
 
   const accuracy = data.daily.map((d) => (d.total ? d.correct / d.total : 0));
@@ -73,17 +150,36 @@ export default function UserPerformanceCharts() {
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="text-lg font-semibold mb-2">Accuracy Over Time</h2>
-        <LineChart values={accuracy} />
+        <div className="p-4 border rounded-lg">
+          <LineChart values={accuracy} />
+          <p className="text-sm text-gray-600 mt-2">
+            Overall accuracy: {data.total.total > 0 ? Math.round((data.total.correct / data.total.total) * 100) : 0}% 
+            ({data.total.correct}/{data.total.total})
+          </p>
+        </div>
       </div>
       <div>
         <h2 className="text-lg font-semibold mb-2">Evaluations Per Day</h2>
-        <BarChart values={counts} />
+        <div className="p-4 border rounded-lg">
+          <BarChart values={counts} />
+          <p className="text-sm text-gray-600 mt-2">
+            Total evaluations: {data.total.total}
+          </p>
+        </div>
       </div>
       <div>
         <h2 className="text-lg font-semibold mb-2">Ranking</h2>
-        <p>
-          Position {data.ranking.position} of {data.ranking.totalUsers}
-        </p>
+        <div className="p-4 border rounded-lg">
+          <p className="text-lg">
+            Position {data.ranking.position} of {data.ranking.totalUsers}
+          </p>
+          <p className="text-sm text-gray-600">
+            {data.ranking.totalUsers > 1 
+              ? `You're in the top ${Math.round((data.ranking.position / data.ranking.totalUsers) * 100)}%`
+              : "You're the only user so far!"
+            }
+          </p>
+        </div>
       </div>
     </div>
   );

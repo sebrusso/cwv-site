@@ -9,7 +9,7 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const protectedPaths = ['/', '/model-evaluation', '/human-machine'];
+  const protectedPaths = ['/', '/model-evaluation', '/human-machine', '/dashboard'];
   if (protectedPaths.some((p) => request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith(`${p}/`))) {
     if (!session) {
       const loginUrl = new URL('/login', request.url);
@@ -22,5 +22,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/model-evaluation/:path*', '/human-machine/:path*'],
+  matcher: ['/', '/model-evaluation/:path*', '/human-machine/:path*', '/dashboard/:path*'],
 };

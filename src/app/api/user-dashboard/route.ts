@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface RawEvalRow {
@@ -81,34 +80,36 @@ export async function handleUserDashboard(
   return NextResponse.json(data);
 }
 
-export async function GET() {
-  const cookieStorePromise = cookies();
-  const supabase = createServerClient(
+export async function GET(request: Request) {
+  // Get the authorization header
+  const authHeader = request.headers.get('authorization');
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookies: {
-        getAll: async () => (await cookieStorePromise).getAll(),
-        setAll: async (
-          cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>
-        ) => {
-          try {
-            const store = await cookieStorePromise;
-            cookiesToSet.forEach(({ name, value, options }) => {
-              store.set(name, value, options as CookieOptions);
-            });
-          } catch {
-            // ignore errors
-          }
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
       },
     }
   );
+
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  return handleUserDashboard(supabase, session.user.id);
+
+  return handleUserDashboard(supabase, user.id);
 }

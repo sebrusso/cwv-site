@@ -72,8 +72,7 @@ export function HumanEvaluationArena() {
   const [showHighlightTip, setShowHighlightTip] = useState(false);
   const [prompts, setPrompts] = useState<Pick<WritingPrompt, "id" | "prompt">[]>([]);
   const [selectedId, setSelectedId] = useState<string | "random">("random");
-  const MODELS = ["gpt-4o", "gpt-4.5-turbo", "gpt-4o-mini", "gpt-4.0"] as const;
-  const [model, setModel] = useState<string>(MODELS[0]);
+  const [isClientMounted, setIsClientMounted] = useState(false);
 
   const [evaluationStart, setEvaluationStart] = useState<number>(0);
 
@@ -84,6 +83,10 @@ export function HumanEvaluationArena() {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Ensure client-side only operations
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
 
   const dismissHighlightTip = () => {
     if (typeof window !== "undefined") {
@@ -155,9 +158,10 @@ export function HumanEvaluationArena() {
       if (excluded.length > 0) {
         query = query.not("id", "in", `(${excluded.join(",")})`);
       }
-      const { data, error } = await query.order("id", {
-        ascending: Math.random() > 0.5,
-      });
+      
+      // Use a fixed order for SSR, randomize only on client
+      const ascending = isClientMounted ? Math.random() > 0.5 : true;
+      const { data, error } = await query.order("id", { ascending });
 
       if (error) {
         const errorMessage =
@@ -181,14 +185,15 @@ export function HumanEvaluationArena() {
       setSelectedText(null);
       setFeedback(null);
 
-      // Randomly assign chosen/rejected texts to left/right
-      const isChosenLeft = Math.random() < 0.5;
-      setTexts({
-        left: isChosenLeft ? promptData.chosen : promptData.rejected,
-        right: isChosenLeft ? promptData.rejected : promptData.chosen,
-      });
-
-      setEvaluationStart(Date.now());
+      // Only randomize on client side to avoid hydration mismatch
+      if (isClientMounted) {
+        const isChosenLeft = Math.random() < 0.5;
+        setTexts({
+          left: isChosenLeft ? promptData.chosen : promptData.rejected,
+          right: isChosenLeft ? promptData.rejected : promptData.chosen,
+        });
+        setEvaluationStart(Date.now());
+      }
 
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
@@ -210,7 +215,7 @@ export function HumanEvaluationArena() {
 
   const fetchPromptById = async (id: string) => {
     setError(null);
-    setIsLoading(true);
+    setLoading(true);
 
     try {
       const { data, error } = await supabase
@@ -221,7 +226,7 @@ export function HumanEvaluationArena() {
 
       if (error || !data) {
         setError("Prompt not found. Please try again.");
-        setIsLoading(false);
+        setLoading(false);
         return;
       }
 
@@ -230,11 +235,15 @@ export function HumanEvaluationArena() {
       setSelectedText(null);
       setFeedback(null);
 
-      const isChosenLeft = Math.random() < 0.5;
-      setTexts({
-        left: isChosenLeft ? promptData.chosen : promptData.rejected,
-        right: isChosenLeft ? promptData.rejected : promptData.chosen,
-      });
+      // Only randomize on client side to avoid hydration mismatch
+      if (isClientMounted) {
+        const isChosenLeft = Math.random() < 0.5;
+        setTexts({
+          left: isChosenLeft ? promptData.chosen : promptData.rejected,
+          right: isChosenLeft ? promptData.rejected : promptData.chosen,
+        });
+        setEvaluationStart(Date.now());
+      }
 
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
       if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
@@ -248,7 +257,7 @@ export function HumanEvaluationArena() {
       setError(`Failed to fetch prompt: ${errorMessage}`);
       console.error("Error fetching prompt:", error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -445,17 +454,6 @@ export function HumanEvaluationArena() {
             ))}
           </select>
         )}
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="border p-2 rounded-md"
-        >
-          {MODELS.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
         <Button onClick={fetchPrompt} disabled={isLoading}>
           {isLoading ? "Loading..." : user ? "Load" : "New Prompt"}
         </Button>

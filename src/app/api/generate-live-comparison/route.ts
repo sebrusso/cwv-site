@@ -15,9 +15,14 @@ async function createOpenAI() {
   const OpenAI = (mod as any).default || mod;
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
-// Define model names - you can adjust these or make them configurable
-const MODEL_A_NAME = 'gpt-4o'; // Example: Use a powerful model for A
-const MODEL_B_NAME = 'gpt-4o-mini'; // Example: Use a faster/cheaper model for B, or vary parameters
+
+// Available models for selection
+export const AVAILABLE_MODELS = [
+  'gpt-4o',
+  'gpt-4o-mini', 
+  'gpt-4-turbo',
+  'gpt-3.5-turbo'
+];
 
 export interface GenerationData {
   live_generation_id: string;
@@ -39,15 +44,23 @@ export async function handleGenerateLiveComparison(
   {
     prompt_db_id,
     prefetch,
-  }: { prompt_db_id: string; prefetch?: boolean },
+    modelA,
+    modelB,
+  }: { prompt_db_id: string; prefetch?: boolean; modelA?: string; modelB?: string },
 ) {
   if (!prompt_db_id) {
     return NextResponse.json({ error: 'Prompt ID is required' }, { status: 400 });
   }
 
-  if (!prefetch && generationCache.has(prompt_db_id)) {
-    const cached = generationCache.get(prompt_db_id);
-    generationCache.delete(prompt_db_id);
+  // Use provided models or fall back to defaults
+  const MODEL_A_NAME = modelA && AVAILABLE_MODELS.includes(modelA) ? modelA : 'gpt-4o';
+  const MODEL_B_NAME = modelB && AVAILABLE_MODELS.includes(modelB) ? modelB : 'gpt-4o-mini';
+
+  const cacheKey = `${prompt_db_id}-${MODEL_A_NAME}-${MODEL_B_NAME}`;
+
+  if (!prefetch && generationCache.has(cacheKey)) {
+    const cached = generationCache.get(cacheKey);
+    generationCache.delete(cacheKey);
     return NextResponse.json(cached);
   }
 
@@ -134,18 +147,22 @@ export async function handleGenerateLiveComparison(
   };
 
   if (prefetch) {
-    generationCache.set(prompt_db_id, payload);
+    generationCache.set(cacheKey, payload);
     return NextResponse.json({ prefetched: true });
   }
 
   return NextResponse.json(payload);
 }
 
+export async function GET() {
+  return NextResponse.json({ availableModels: AVAILABLE_MODELS });
+}
+
 export async function POST(req: Request) {
   try {
-    const { prompt_db_id, prefetch } = await req.json();
+    const { prompt_db_id, prefetch, modelA, modelB } = await req.json();
     const openai = await createOpenAI();
-    return handleGenerateLiveComparison(supabaseAdmin, openai, { prompt_db_id, prefetch });
+    return handleGenerateLiveComparison(supabaseAdmin, openai, { prompt_db_id, prefetch, modelA, modelB });
   } catch (err) {
     console.error('Overall error in /api/generate-live-comparison:', err);
     const errorMessage = err instanceof Error ? err.message : 'Unknown server error';
