@@ -24,22 +24,22 @@ function similarity(a: string, b: string) {
 interface LiveEvaluationDisplayData {
   source_prompt_db_id: string; // UUID from the 'writingprompts-pairwise-test' table
   source_prompt_text: string;
-  live_generation_id: string; // ID from the 'live_generations' table (this will be the prompt_id for model_evaluations)
+  live_generation_id: string; // ID from the 'live_generations' table used for generation
   generated_response_A: string;
   generated_response_B: string;
   model_A_name: string;
   model_B_name: string;
 }
 
-// ModelEvaluation interface remains similar, but prompt_id will now be live_generation_id
+// ModelEvaluation represents a stored evaluation of one model's output
 interface ModelEvaluation {
   id?: string;
   user_id: string;
-  prompt_id: string; // This will be the live_generation_id (UUID)
-  selected_response_text: string; // Store the actual text selected
-  selected_model_name: string; // Store the model name of the selected text
-  // ground_truth: string; // Re-evaluate if needed, for live comparison, this is subjective
-  // is_correct: boolean; // For live A/B, correctness isn't predefined
+  prompt_id: string; // ID from the writingprompts-pairwise-test table
+  model_name: string; // Model chosen by the user
+  selected_response: string; // Text of the chosen response
+  ground_truth: string; // For live comparisons we store the chosen text
+  is_correct: boolean; // Always true since choice implies correctness
   created_at?: string;
 }
 
@@ -255,10 +255,11 @@ export function ModelEvaluationArena() {
       try {
         const evaluationData: ModelEvaluation = {
           user_id: user.id,
-          prompt_id: currentDisplayData.live_generation_id, // This is crucial: use live_generation_id
-          selected_response_text: selectedActualText,
-          selected_model_name: selectedModelName,
-          // 'ground_truth' and 'is_correct' are omitted as they don't fit this live A/B comparison mode
+          prompt_id: currentDisplayData.source_prompt_db_id,
+          model_name: selectedModelName,
+          selected_response: selectedActualText,
+          ground_truth: selectedActualText,
+          is_correct: true,
         };
 
         console.log("Saving live evaluation data:", JSON.stringify(evaluationData, null, 2));
@@ -344,11 +345,32 @@ export function ModelEvaluationArena() {
     setIsSubmittingRationale(true);
     setRationaleError(null);
     try {
+      if (!currentDisplayData || !selectedResponseFullText) throw new Error('Missing evaluation context');
+
+      const selectedSide = selectedResponseFullText === responses.left ? 'left' : 'right';
+      const selectedOriginalModel = responseMapping[selectedSide];
+      const selectedModelName =
+        selectedOriginalModel === 'A'
+          ? currentDisplayData.model_A_name
+          : currentDisplayData.model_B_name;
+
       const rationaleData: ModelRationale = {
         evaluation_id: currentEvaluationId,
         rationale: rationale,
       };
-      const { error } = await supabase.from("model_writing_rationales").insert(rationaleData);
+
+      const insertData = {
+        evaluation_id: rationaleData.evaluation_id,
+        rationale: rationaleData.rationale,
+        user_id: user.id,
+        prompt_id: currentDisplayData.source_prompt_db_id,
+        model_name: selectedModelName,
+        selected_response: selectedResponseFullText,
+        ground_truth: selectedResponseFullText,
+        is_correct: true,
+      };
+
+      const { error } = await supabase.from('model_writing_rationales').insert(insertData);
       if (error) throw error;
       
       console.log("Rationale saved for evaluation ID:", currentEvaluationId);

@@ -292,12 +292,14 @@ CREATE POLICY "Users can view their own model comparisons"
 -- Create model_writing_rationales table
 CREATE TABLE IF NOT EXISTS model_writing_rationales (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  evaluation_id UUID REFERENCES model_evaluations(id),
   user_id UUID REFERENCES auth.users(id) NOT NULL,
   prompt_id UUID REFERENCES "writingprompts-pairwise-test"(id) NOT NULL,
   model_name TEXT NOT NULL,
   selected_response TEXT NOT NULL,
   ground_truth TEXT NOT NULL,
   is_correct BOOLEAN NOT NULL,
+  rationale TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
