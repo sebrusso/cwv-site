@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/UserContext";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { LoginForm } from "./LoginForm";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Popover,
   PopoverContent,
@@ -45,8 +46,8 @@ export function UserProfileButton() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         {isLoading ? (
-          <div className="flex items-center justify-center p-4">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="p-4">
+            <Skeleton className="h-5 w-full" />
           </div>
         ) : user ? (
           <div className="space-y-4 p-4">
