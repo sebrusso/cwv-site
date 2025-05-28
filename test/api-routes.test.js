@@ -176,3 +176,21 @@ test('auth callback redirects to provided path', async () => {
   assert.equal(res.status, 307);
   assert.equal(res.headers.get('location'), 'http://site/dest');
 });
+
+test('model-quality-leaderboard aggregates comparisons', async () => {
+  const { handleModelQualityLeaderboard } = loadRoute(
+    'src/app/api/model-quality-leaderboard/route.ts'
+  );
+  const supabase = supabaseSelectMock({
+    model_comparisons: [
+      { model_a_name: 'A', model_b_name: 'B', winner: 'A' },
+      { model_a_name: 'A', model_b_name: 'B', winner: 'B' },
+      { model_a_name: 'B', model_b_name: 'C', winner: 'B' },
+    ],
+  });
+  const res = await handleModelQualityLeaderboard(supabase);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.leaderboard[0].model, 'B');
+  assert.equal(body.matrix['A']['B'], 1);
+});
