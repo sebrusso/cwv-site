@@ -99,3 +99,21 @@ test('model-leaderboard aggregates results', async () => {
   assert.ok(Math.abs(body[0].winRate - 2 / 3) < 1e-6);
   assert.ok(Math.abs(body[1].winRate - 1 / 3) < 1e-6);
 });
+
+test('model-quality-leaderboard aggregates comparisons', async () => {
+  const { handleModelQualityLeaderboard } = loadRoute(
+    'src/app/api/model-quality-leaderboard/route.ts'
+  );
+  const supabase = supabaseSelectMock({
+    model_comparisons: [
+      { model_a_name: 'A', model_b_name: 'B', winner: 'A' },
+      { model_a_name: 'A', model_b_name: 'B', winner: 'B' },
+      { model_a_name: 'B', model_b_name: 'C', winner: 'B' },
+    ],
+  });
+  const res = await handleModelQualityLeaderboard(supabase);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.leaderboard[0].model, 'B');
+  assert.equal(body.matrix['A']['B'], 1);
+});

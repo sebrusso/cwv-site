@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 
 interface Entry {
   model: string;
-  mode: string;
   wins: number;
   losses: number;
 }
+
+type Matrix = Record<string, Record<string, number>>;
 
 function winRate(entry: Entry) {
   const total = entry.wins + entry.losses;
@@ -15,15 +16,16 @@ function winRate(entry: Entry) {
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [mode, setMode] = useState('all');
+  const [matrix, setMatrix] = useState<Matrix>({});
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/model-leaderboard');
+        const res = await fetch('/api/model-quality-leaderboard');
         if (res.ok) {
-          const data = await res.json();
-          setEntries(data);
+          const json = await res.json();
+          setEntries(json.leaderboard);
+          setMatrix(json.matrix);
         }
       } catch {
         // ignore errors for now
@@ -32,28 +34,11 @@ export default function LeaderboardPage() {
     fetchData();
   }, []);
 
-  const modes = Array.from(new Set(entries.map((e) => e.mode)));
-  const filtered = mode === 'all' ? entries : entries.filter((e) => e.mode === mode);
-
-  const sorted = [...filtered].sort((a, b) => winRate(b) - winRate(a));
+  const sorted = [...entries].sort((a, b) => winRate(b) - winRate(a));
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Model Leaderboard</h1>
-      {modes.length > 1 && (
-        <select
-          value={mode}
-          onChange={(e) => setMode(e.target.value)}
-          className="w-fit border rounded p-2"
-        >
-          <option value="all">All Modes</option>
-          {modes.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-      )}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-800">
@@ -71,7 +56,7 @@ export default function LeaderboardPage() {
           </thead>
           <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {sorted.map((e, i) => (
-              <tr key={`${e.model}-${e.mode}`}>
+              <tr key={e.model}>
                 <td className="px-4 py-2 text-sm">{i + 1}</td>
                 <td className="px-4 py-2 text-sm">{e.model}</td>
                 <td className="px-4 py-2 text-sm">{(winRate(e) * 100).toFixed(1)}%</td>
@@ -80,6 +65,37 @@ export default function LeaderboardPage() {
           </tbody>
         </table>
       </div>
+      {Object.keys(matrix).length > 0 && (
+        <div className="overflow-x-auto">
+          <h2 className="text-xl font-semibold mt-6">Head to Head Wins</h2>
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 mt-2">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Model
+                </th>
+                {Object.keys(matrix).map((m) => (
+                  <th key={m} className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-300">
+                    {m}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+              {Object.keys(matrix).map((row) => (
+                <tr key={row}>
+                  <th className="px-4 py-2 text-sm text-left">{row}</th>
+                  {Object.keys(matrix).map((col) => (
+                    <td key={col} className="px-4 py-2 text-sm text-center">
+                      {row === col ? '-' : matrix[row]?.[col] ?? 0}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
