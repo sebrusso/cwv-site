@@ -52,6 +52,10 @@ test('generate-openai error when no boundary', async () => {
 });
 
 test('generate-live-comparison trims both responses', async () => {
+  // Set required environment variables for tests
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.com';
+  process.env.SUPABASE_SERVICE_KEY = 'test-key';
+  
   const { handleGenerateLiveComparison } = loadRoute('src/app/api/generate-live-comparison/route.ts');
   const supabase = {
     from: (table) => {
@@ -72,23 +76,29 @@ test('generate-live-comparison trims both responses', async () => {
       return {};
     },
   };
+  
   let call = 0;
-  const fetchMock = async () => {
-    call++;
-    return {
-      json: async () => ({
-        choices: [
-          {
-            message: {
-              content: call === 1 ? 'A sentence. And partial' : 'Another full sentence.',
-            },
-            finish_reason: 'length',
-          },
-        ],
-      }),
-    };
+  const openai = {
+    chat: {
+      completions: {
+        create: async () => {
+          call++;
+          return { 
+            choices: [
+              {
+                message: {
+                  content: call === 1 ? 'A sentence. And partial' : 'Another full sentence.',
+                },
+                finish_reason: 'length',
+              },
+            ]
+          };
+        }
+      }
+    }
   };
-  const res = await handleGenerateLiveComparison(supabase, fetchMock, 'p1');
+  
+  const res = await handleGenerateLiveComparison(supabase, openai, { prompt_db_id: 'p1' });
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.response_A, 'A sentence.');
