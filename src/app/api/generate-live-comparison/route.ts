@@ -43,37 +43,65 @@ export async function handleGenerateLiveComparison(
   openaiClient: any,
   {
     prompt_db_id,
+    prompt_text,
     prefetch,
     modelA,
     modelB,
-  }: { prompt_db_id: string; prefetch?: boolean; modelA?: string; modelB?: string },
+  }: {
+    prompt_db_id?: string;
+    prompt_text?: string;
+    prefetch?: boolean;
+    modelA?: string;
+    modelB?: string;
+  },
 ) {
-  if (!prompt_db_id) {
-    return NextResponse.json({ error: 'Prompt ID is required' }, { status: 400 });
+  if (!prompt_db_id && !prompt_text) {
+    return NextResponse.json({ error: 'Prompt ID or text is required' }, { status: 400 });
   }
 
   // Use provided models or fall back to defaults
   const MODEL_A_NAME = modelA && AVAILABLE_MODELS.includes(modelA) ? modelA : 'gpt-4o';
   const MODEL_B_NAME = modelB && AVAILABLE_MODELS.includes(modelB) ? modelB : 'gpt-4o-mini';
 
-  const cacheKey = `${prompt_db_id}-${MODEL_A_NAME}-${MODEL_B_NAME}`;
+  let promptId = prompt_db_id;
+
+  let promptData;
+  if (prompt_text) {
+    const { data, error } = await supabase
+      .from('writingprompts-pairwise-test')
+      .insert({ prompt: prompt_text })
+      .select('id, prompt')
+      .single();
+
+    if (error || !data) {
+      console.error('Error inserting prompt into DB:', error);
+      return NextResponse.json(
+        { error: 'Failed to save custom prompt' },
+        { status: 500 },
+      );
+    }
+    promptData = data;
+    promptId = data.id;
+  } else {
+    const { data, error } = await supabase
+      .from('writingprompts-pairwise-test')
+      .select('id, prompt')
+      .eq('id', prompt_db_id!)
+      .single();
+
+    if (error || !data) {
+      console.error('Error fetching prompt from DB:', error);
+      return NextResponse.json({ error: 'Failed to fetch prompt text' }, { status: 500 });
+    }
+    promptData = data;
+  }
+
+  const cacheKey = `${promptId}-${MODEL_A_NAME}-${MODEL_B_NAME}`;
 
   if (!prefetch && generationCache.has(cacheKey)) {
     const cached = generationCache.get(cacheKey);
     generationCache.delete(cacheKey);
     return NextResponse.json(cached);
-  }
-
-  // 1. Fetch the prompt text from the 'writingprompts-pairwise-test' table
-  const { data: promptData, error: promptError } = await supabase
-    .from('writingprompts-pairwise-test')
-    .select('id, prompt')
-    .eq('id', prompt_db_id)
-    .single();
-
-  if (promptError || !promptData) {
-    console.error('Error fetching prompt from DB:', promptError);
-    return NextResponse.json({ error: 'Failed to fetch prompt text' }, { status: 500 });
   }
 
   const sourcePromptText = promptData.prompt;
@@ -122,7 +150,7 @@ export async function handleGenerateLiveComparison(
   const { data: liveGenerationData, error: insertError } = await supabase
     .from('live_generations')
     .insert({
-      prompt_id: promptData.id, // Link to the original prompt_db_id
+      prompt_id: promptData.id, // Link to the prompt used
       model_a_name: MODEL_A_NAME,
       response_a_text: sentenceA,
       model_b_name: MODEL_B_NAME,
@@ -160,9 +188,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { prompt_db_id, prefetch, modelA, modelB } = await req.json();
+    const { prompt_db_id, prompt_text, prefetch, modelA, modelB } = await req.json();
     const openai = await createOpenAI();
-    return handleGenerateLiveComparison(supabaseAdmin, openai, { prompt_db_id, prefetch, modelA, modelB });
+    return handleGenerateLiveComparison(supabaseAdmin, openai, { prompt_db_id, prompt_text, prefetch, modelA, modelB });
   } catch (err) {
     console.error('Overall error in /api/generate-live-comparison:', err);
     const errorMessage = err instanceof Error ? err.message : 'Unknown server error';

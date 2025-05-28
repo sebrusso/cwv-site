@@ -79,6 +79,7 @@ export function ModelEvaluationArena() {
   const [prefetchedPromptId, setPrefetchedPromptId] = useState<string | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
+  const [customPrompt, setCustomPrompt] = useState("");
 
   const leftResponseRef = useRef<HTMLDivElement>(null);
   const rightResponseRef = useRef<HTMLDivElement>(null);
@@ -128,11 +129,23 @@ export function ModelEvaluationArena() {
     return randomPromptEntry.id as string;
   };
 
-  const fetchComparison = async (id: string, modelA: string, modelB: string, prefetch = false) => {
+  const fetchComparison = async (
+    id: string | null,
+    modelA: string,
+    modelB: string,
+    promptText?: string,
+    prefetch = false,
+  ) => {
     const apiResponse = await fetch("/api/generate-live-comparison", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt_db_id: id, prefetch, modelA, modelB }),
+      body: JSON.stringify({
+        prompt_db_id: id ?? undefined,
+        prompt_text: promptText,
+        prefetch,
+        modelA,
+        modelB,
+      }),
     });
     if (!apiResponse.ok) {
       const errData = await apiResponse.json();
@@ -147,7 +160,7 @@ export function ModelEvaluationArena() {
     try {
       setIsPrefetching(true);
       const id = await getRandomPromptId();
-      await fetchComparison(id, selectedModels.modelA, selectedModels.modelB, true);
+      await fetchComparison(id, selectedModels.modelA, selectedModels.modelB, undefined, true);
       setPrefetchedPromptId(id);
     } catch (err) {
       console.error("Prefetch error", err);
@@ -156,7 +169,7 @@ export function ModelEvaluationArena() {
     }
   }, [selectedModels, isClientMounted]);
 
-  const generateComparison = async (promptId?: string) => {
+  const generateComparison = async (promptText?: string) => {
     if (!selectedModels) {
       setError("Please select models first");
       return;
@@ -180,8 +193,13 @@ export function ModelEvaluationArena() {
     setHighlight("");
     
     try {
-      const id = promptId || prefetchedPromptId || (await getRandomPromptId());
-      const liveDataFromApi = await fetchComparison(id, selectedModels.modelA, selectedModels.modelB);
+      const id = promptText ? null : prefetchedPromptId || (await getRandomPromptId());
+      const liveDataFromApi = await fetchComparison(
+        id,
+        selectedModels.modelA,
+        selectedModels.modelB,
+        promptText || undefined,
+      );
       
       setCurrentDisplayData({
         source_prompt_db_id: liveDataFromApi.prompt_db_id,
@@ -225,6 +243,7 @@ export function ModelEvaluationArena() {
 
   const handleModelSelection = (selection: { modelA: string; modelB: string }) => {
     setSelectedModels(selection);
+    setCustomPrompt("");
   };
 
   const handleSelection = (side: "left" | "right") => {
@@ -326,6 +345,7 @@ export function ModelEvaluationArena() {
   const handleNextPrompt = () => {
     setPhase('selection');
     setSelectedModels(null);
+    setCustomPrompt("");
   };
 
   const saveRationale = async () => {
@@ -405,12 +425,19 @@ export function ModelEvaluationArena() {
         )}
 
         {selectedModels && (
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <div className="mt-4 text-center flex flex-col items-center gap-4 w-full max-w-md">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Selected: <strong>{selectedModels.modelA}</strong> vs <strong>{selectedModels.modelB}</strong>
             </p>
-            <Button 
-              onClick={() => generateComparison()} 
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              className="w-full p-2 border rounded-md text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+              placeholder="Enter a custom prompt or leave blank for a random one"
+              rows={3}
+            />
+            <Button
+              onClick={() => generateComparison(customPrompt.trim() || undefined)}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               Generate Stories

@@ -105,3 +105,46 @@ test('generate-live-comparison trims both responses', async () => {
   assert.equal(body.response_B, 'Another full sentence.');
 });
 
+test('generate-live-comparison accepts custom prompt text', async () => {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.com';
+  process.env.SUPABASE_SERVICE_KEY = 'test-key';
+
+  const { handleGenerateLiveComparison } = loadRoute('src/app/api/generate-live-comparison/route.ts');
+  let insertedPrompt;
+  const supabase = {
+    from: (table) => {
+      if (table === 'writingprompts-pairwise-test') {
+        return {
+          insert: (data) => ({
+            select: () => ({
+              single: async () => ({ data: { id: 'new1', prompt: data.prompt }, error: null })
+            })
+          })
+        };
+      }
+      if (table === 'live_generations') {
+        return {
+          insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'g1' }, error: null }) }) })
+        };
+      }
+      return {};
+    }
+  };
+  const openai = {
+    chat: {
+      completions: {
+        create: async ({ messages }) => {
+          insertedPrompt = messages[1].content;
+          return { choices: [{ message: { content: 'Done.' }, finish_reason: 'stop' }] };
+        }
+      }
+    }
+  };
+
+  const res = await handleGenerateLiveComparison(supabase, openai, { prompt_text: 'My prompt' });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.prompt_text, 'My prompt');
+  assert.equal(insertedPrompt, 'My prompt');
+});
+
