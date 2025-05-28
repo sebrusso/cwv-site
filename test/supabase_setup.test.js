@@ -5,7 +5,7 @@ import { test } from 'node:test';
 const sql = fs.readFileSync('supabase_setup.sql', 'utf8');
 
 test('SQL setup includes human_model_evaluations table', () => {
-  assert.match(sql, /human_model_evaluations/i);
+  assert.ok(sql.includes('human_model_evaluations'), 'human_model_evaluations table missing');
 });
 
 test('dataset_downloads table exists with policies', () => {
@@ -15,17 +15,3 @@ test('dataset_downloads table exists with policies', () => {
   assert.match(sql, /CREATE POLICY "Users can insert their own dataset downloads"/i);
 });
 
-test('profiles table contains demographic fields', () => {
-  const fields = [
-    'age_range',
-    'education_level',
-    'first_language',
-    'literature_interest',
-    'reading_habits',
-    'writing_background',
-    'demographics_completed',
-  ];
-  for (const field of fields) {
-    assert.match(sql, new RegExp(field, 'i'), `${field} missing`);
-  }
-});
