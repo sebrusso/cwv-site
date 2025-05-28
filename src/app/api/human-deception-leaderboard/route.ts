@@ -3,31 +3,30 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function handleModelLeaderboard(supabase: SupabaseClient) {
-  const { data: modelEval, error: modelErr } = await supabase
-    .from('model_evaluations')
-    .select('model_name,is_correct');
-  if (modelErr) {
-    return NextResponse.json({ error: modelErr.message }, { status: 500 });
-  }
-  const { data: humanEval, error: humanErr } = await supabase
+interface HumanEvalRow {
+  model_name: string;
+  guess_correct: boolean;
+}
+
+export async function handleHumanLeaderboard(supabase: SupabaseClient) {
+  const { data, error } = await supabase
     .from('human_model_evaluations')
-    .select('model_name,is_correct');
-  if (humanErr) {
-    return NextResponse.json({ error: humanErr.message }, { status: 500 });
+    .select('model_name,guess_correct');
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  const stats: Record<string, { wins: number; total: number }> = {};
-  for (const row of [...(modelEval || []), ...(humanEval || [])]) {
-    const model = row.model_name;
-    if (!stats[model]) stats[model] = { wins: 0, total: 0 };
-    if (row.is_correct) stats[model].wins++;
-    stats[model].total++;
+  const stats: Record<string, { fooled: number; total: number }> = {};
+  for (const row of (data as HumanEvalRow[]) || []) {
+    if (!stats[row.model_name]) stats[row.model_name] = { fooled: 0, total: 0 };
+    if (!row.guess_correct) stats[row.model_name].fooled++;
+    stats[row.model_name].total++;
   }
   const result = Object.entries(stats).map(([model, s]) => ({
     model,
-    winRate: s.total ? s.wins / s.total : 0,
+    deceptionRate: s.total ? s.fooled / s.total : 0,
+    total: s.total,
   }));
-  result.sort((a, b) => b.winRate - a.winRate);
+  result.sort((a, b) => b.deceptionRate - a.deceptionRate);
   return NextResponse.json(result);
 }
 
@@ -54,12 +53,5 @@ export async function GET() {
       },
     }
   );
-  return handleModelLeaderboard(supabase);
-}
-
-export interface LeaderboardEntry {
-  model: string;
-  mode: string;
-  wins: number;
-  losses: number;
+  return handleHumanLeaderboard(supabase);
 }

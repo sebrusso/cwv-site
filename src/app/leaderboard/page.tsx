@@ -1,85 +1,112 @@
-'use client';
-import { useEffect, useState } from 'react';
+"use client";
+import { useEffect, useState } from "react";
+import { LeaderboardTable, TableColumn } from "@/components/LeaderboardTable";
+import { Tabs } from "@/components/Tabs";
 
-interface Entry {
+interface QualityEntry {
   model: string;
-  mode: string;
-  wins: number;
-  losses: number;
+  winRate: number;
 }
 
-function winRate(entry: Entry) {
-  const total = entry.wins + entry.losses;
-  return total === 0 ? 0 : entry.wins / total;
+interface DeceptionEntry {
+  model: string;
+  deceptionRate: number;
+  total: number;
 }
 
 export default function LeaderboardPage() {
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [mode, setMode] = useState('all');
+  const [quality, setQuality] = useState<QualityEntry[]>([]);
+  const [deception, setDeception] = useState<DeceptionEntry[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAll = async () => {
       try {
-        const res = await fetch('/api/model-leaderboard');
-        if (res.ok) {
-          const data = await res.json();
-          setEntries(data);
-        }
+        const [qRes, dRes] = await Promise.all([
+          fetch("/api/model-leaderboard"),
+          fetch("/api/human-deception-leaderboard"),
+        ]);
+        if (qRes.ok) setQuality(await qRes.json());
+        if (dRes.ok) setDeception(await dRes.json());
       } catch {
-        // ignore errors for now
+        // ignore errors
       }
     };
-    fetchData();
+    fetchAll();
   }, []);
 
-  const modes = Array.from(new Set(entries.map((e) => e.mode)));
-  const filtered = mode === 'all' ? entries : entries.filter((e) => e.mode === mode);
+  const qualityCols: TableColumn<QualityEntry>[] = [
+    {
+      key: "model",
+      label: "Model",
+      sortable: true,
+    },
+    {
+      key: "winRate",
+      label: "Win Rate",
+      sortable: true,
+      render: (row) => (
+        <div className="flex items-center gap-2 w-40">
+          <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded">
+            <div
+              className="h-full bg-primary rounded"
+              style={{ width: `${Math.round(row.winRate * 100)}%` }}
+            />
+          </div>
+          <span>{(row.winRate * 100).toFixed(1)}%</span>
+        </div>
+      ),
+    },
+  ];
 
-  const sorted = [...filtered].sort((a, b) => winRate(b) - winRate(a));
+  const deceptionCols: TableColumn<DeceptionEntry>[] = [
+    { key: "model", label: "Model", sortable: true },
+    {
+      key: "deceptionRate",
+      label: "Fool Rate",
+      sortable: true,
+      render: (row) => (
+        <div className="flex items-center gap-2 w-40">
+          <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded">
+            <div
+              className="h-full bg-primary rounded"
+              style={{ width: `${Math.round(row.deceptionRate * 100)}%` }}
+            />
+          </div>
+          <span>{(row.deceptionRate * 100).toFixed(1)}%</span>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Model Leaderboard</h1>
-      {modes.length > 1 && (
-        <select
-          value={mode}
-          onChange={(e) => setMode(e.target.value)}
-          className="w-fit border rounded p-2"
-        >
-          <option value="all">All Modes</option>
-          {modes.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-      )}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                #
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Model
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Win Rate
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-            {sorted.map((e, i) => (
-              <tr key={`${e.model}-${e.mode}`}>
-                <td className="px-4 py-2 text-sm">{i + 1}</td>
-                <td className="px-4 py-2 text-sm">{e.model}</td>
-                <td className="px-4 py-2 text-sm">{(winRate(e) * 100).toFixed(1)}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="max-w-3xl mx-auto flex flex-col gap-6 p-4">
+      <h1 className="text-2xl font-semibold">Leaderboards</h1>
+      <Tabs
+        tabs={[
+          {
+            key: "quality",
+            title: "Model Quality",
+            content: (
+              <LeaderboardTable
+                entries={quality}
+                columns={qualityCols}
+                exportName="model-quality.csv"
+              />
+            ),
+          },
+          {
+            key: "deception",
+            title: "Human Deception",
+            content: (
+              <LeaderboardTable
+                entries={deception}
+                columns={deceptionCols}
+                exportName="human-deception.csv"
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
