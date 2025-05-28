@@ -3,8 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 // import { Inter } from "next/font/google"; // Old import
 import { inter } from "@/lib/fonts"; // New import for local Inter
 import { UserProvider } from "@/contexts/UserContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 import { NavigationBar } from "@/components/NavigationBar";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,14 +34,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${inter.className} antialiased`}
       >
-        <ErrorBoundary>
+        <ToastProvider>
           <UserProvider>
             <main className="min-h-screen p-4 sm:p-6 lg:p-8">
               <NavigationBar />
               {children}
             </main>
           </UserProvider>
-        </ErrorBoundary>
+        </ToastProvider>
       </body>
     </html>
   );
