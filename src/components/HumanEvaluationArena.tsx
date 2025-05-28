@@ -2,11 +2,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { useState, useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 
@@ -52,8 +51,7 @@ export function HumanEvaluationArena() {
     right: "",
   });
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [pendingScoreUpdate, setPendingScoreUpdate] = useState<boolean | null>(
@@ -62,11 +60,17 @@ export function HumanEvaluationArena() {
   const [showUpvotes, setShowUpvotes] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
   const [showHighlightTip, setShowHighlightTip] = useState(false);
+  const [prompts, setPrompts] = useState<Pick<WritingPrompt, "id" | "prompt">[]>([]);
+  const [selectedId, setSelectedId] = useState<string | "random">("random");
+  const MODELS = ["gpt-4o", "gpt-4.5-turbo", "gpt-4o-mini", "gpt-4.0"] as const;
+  const [model, setModel] = useState<string>(MODELS[0]);
 
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
 
-  const { user, profile, incrementScore, addViewedPrompt } = useUser();
+  const { user, profile, incrementScore, addViewedPrompt, isLoading } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const handleHighlight = () => {
     if (typeof window === "undefined") return;
@@ -115,10 +119,22 @@ export function HumanEvaluationArena() {
     }
   }, [user, profile]);
 
+  // Load prompt options when a user is authenticated
+  useEffect(() => {
+    if (!user) return;
+    const loadPrompts = async () => {
+      const { data } = await supabase
+        .from("writingprompts-pairwise-test")
+        .select("id,prompt")
+        .limit(50);
+      setPrompts(data || []);
+    };
+    loadPrompts();
+  }, [user]);
+
   const fetchRandomPrompt = async () => {
     setError(null);
-    setIsLoading(true);
-    setProgress(10);
+    setLoading(true);
 
     try {
       // Get a random prompt without filtering for previously viewed ones
@@ -135,17 +151,16 @@ export function HumanEvaluationArena() {
             : `Database error: ${error.message}`;
         setError(errorMessage);
         console.error("Error details:", error);
-        setIsLoading(false);
+        setLoading(false);
         return;
       }
 
       if (!data || data.length === 0) {
         setError("No prompt found. Please try again.");
-        setIsLoading(false);
+        setLoading(false);
         return;
       }
 
-      setProgress(60);
       const promptData = data[0];
       setPrompt(promptData);
       setSelectedText(null);
@@ -161,7 +176,6 @@ export function HumanEvaluationArena() {
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
       if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
-      setProgress(100);
 
       // If user is logged in, still track this prompt as viewed for analytics
       if (user && promptData.id) {
@@ -172,16 +186,76 @@ export function HumanEvaluationArena() {
         error instanceof Error ? error.message : "Unknown error occurred";
       setError(`Failed to fetch prompt: ${errorMessage}`);
       console.error("Error fetching prompt:", error);
-      setProgress(100);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPromptById = async (id: string) => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("writingprompts-pairwise-test")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error || !data) {
+        setError("Prompt not found. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      const promptData = data;
+      setPrompt(promptData);
+      setSelectedText(null);
+      setFeedback(null);
+
+      const isChosenLeft = Math.random() < 0.5;
+      setTexts({
+        left: isChosenLeft ? promptData.chosen : promptData.rejected,
+        right: isChosenLeft ? promptData.rejected : promptData.chosen,
+      });
+
+      if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
+      if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
+
+      if (user && promptData.id) {
+        addViewedPrompt(promptData.id);
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      setError(`Failed to fetch prompt: ${errorMessage}`);
+      console.error("Error fetching prompt:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchPrompt = async () => {
+    if (user && selectedId !== "random") {
+      await fetchPromptById(selectedId);
+    } else {
+      await fetchRandomPrompt();
+    }
+  };
+
   useEffect(() => {
-    fetchRandomPrompt();
+    fetchPrompt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
+
+  if (!user && !isLoading) {
+    return (
+      <div className="text-center py-10">
+        <p className="mb-4">You must be logged in to evaluate.</p>
+        <Button onClick={() => router.push(`/login?redirect=${encodeURIComponent(pathname)}`)}>Log in</Button>
+      </div>
+    );
+  }
 
   const handleSelection = (text: string) => {
     if (selectedText || !prompt) return;
@@ -255,7 +329,7 @@ export function HumanEvaluationArena() {
     setHighlight("");
 
     // Fetch next prompt
-    fetchRandomPrompt();
+    fetchPrompt();
   };
 
   const saveRationale = async () => {
@@ -322,9 +396,36 @@ export function HumanEvaluationArena() {
 
   return (
     <div className="flex flex-col items-center gap-8">
-      {(isLoading || isSubmittingRationale) && (
-        <Progress value={progress} className="w-full" />
-      )}
+      <div className="flex flex-wrap gap-2">
+        {user && (
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="border p-2 rounded-md"
+          >
+            <option value="random">Random Prompt</option>
+            {prompts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.prompt.slice(0, 40)}
+              </option>
+            ))}
+          </select>
+        )}
+        <select
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          className="border p-2 rounded-md"
+        >
+          {MODELS.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <Button onClick={fetchPrompt} disabled={isLoading}>
+          {isLoading ? "Loading..." : user ? "Load" : "New Prompt"}
+        </Button>
+      </div>
       {showHighlightTip && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="w-full max-w-sm p-6">
@@ -413,7 +514,10 @@ export function HumanEvaluationArena() {
                   disabled={isSubmittingRationale || !user}
                 >
                   {isSubmittingRationale ? (
-                    <Skeleton className="h-4 w-20" />
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                      <span>Submitting...</span>
+                    </div>
                   ) : !user ? (
                     "Log in to Submit"
                   ) : (
@@ -469,11 +573,9 @@ export function HumanEvaluationArena() {
           )}
         </div>
 
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="h-24 w-full" />
-            <Progress value={progress} />
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
         ) : prompt ? (
           <Card className="w-full p-4">

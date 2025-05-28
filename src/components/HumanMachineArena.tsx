@@ -2,6 +2,8 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
+import { useUser } from "@/contexts/UserContext";
+import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,6 +41,10 @@ export function HumanMachineArena() {
   const [result, setResult] = useState<boolean | null>(null);
   const addToast = useToast();
 
+  const { user, isLoading } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
+
   useEffect(() => {
     const loadPrompts = async () => {
       const { data } = await supabase
@@ -49,6 +55,15 @@ export function HumanMachineArena() {
     };
     loadPrompts();
   }, []);
+
+  if (!user && !isLoading) {
+    return (
+      <div className="text-center py-10">
+        <p className="mb-4">You must be logged in to evaluate.</p>
+        <Button onClick={() => router.push(`/login?redirect=${encodeURIComponent(pathname)}`)}>Log in</Button>
+      </div>
+    );
+  }
 
   const fetchSample = async () => {
     setLoading(true);
