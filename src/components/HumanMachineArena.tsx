@@ -1,9 +1,10 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TextPane } from "@/components/TextPane";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,6 +34,9 @@ export function HumanMachineArena() {
     right: "ai",
   });
   const [result, setResult] = useState<boolean | null>(null);
+
+  const leftResponseRef = useRef<HTMLDivElement>(null);
+  const rightResponseRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadPrompts = async () => {
@@ -140,13 +144,25 @@ export function HumanMachineArena() {
             className="p-4 cursor-pointer hover:ring-2 hover:ring-indigo-500"
             onClick={() => selectSide("left")}
           >
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{texts.left}</p>
+            <TextPane
+              ref={leftResponseRef}
+              pairedRef={rightResponseRef}
+              text={texts.left}
+              enableHighlight
+              id="hm-left-pane"
+            />
           </Card>
           <Card
             className="p-4 cursor-pointer hover:ring-2 hover:ring-indigo-500"
             onClick={() => selectSide("right")}
           >
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{texts.right}</p>
+            <TextPane
+              ref={rightResponseRef}
+              pairedRef={leftResponseRef}
+              text={texts.right}
+              enableHighlight
+              id="hm-right-pane"
+            />
           </Card>
         </div>
       )}

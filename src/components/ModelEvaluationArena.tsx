@@ -1,8 +1,9 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
+import { TextPane } from "@/components/TextPane";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
@@ -74,7 +75,7 @@ export function ModelEvaluationArena() {
 
   const { user } = useUser();
 
-  const fetchNewLiveComparison = async () => {
+  const fetchNewLiveComparison = useCallback(async () => {
     console.log("fetchNewLiveComparison called. User object:", user);
     console.log("Current Supabase auth session:", supabase.auth.getSession()); // Log current session
 
@@ -158,11 +159,12 @@ export function ModelEvaluationArena() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
+  // Fetch on initial load
   useEffect(() => {
     fetchNewLiveComparison();
-  }, []); // Fetch on initial load
+  }, [fetchNewLiveComparison]);
 
   const handleSelection = (side: "left" | "right") => {
     if (selectedResponseFullText || !currentDisplayData) return; // Already selected or no data
@@ -312,22 +314,32 @@ export function ModelEvaluationArena() {
       {responses.left && responses.right && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           <Card
-            ref={leftResponseRef}
-            className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer overflow-y-auto max-h-96 \
+            className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer \
                         ${pendingSelectionSide === "left" ? "ring-4 ring-indigo-400 dark:ring-indigo-600 border-indigo-500 dark:border-indigo-700" : "border-gray-300 dark:border-gray-700"} \
                         ${isSelectionMade ? "opacity-70 cursor-not-allowed" : "hover:border-indigo-500 dark:hover:border-indigo-400"}`}
             onClick={() => !isSelectionMade && handleSelection("left")}
           >
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.left}</p>
+            <TextPane
+              ref={leftResponseRef}
+              pairedRef={rightResponseRef}
+              text={responses.left}
+              enableHighlight
+              id="left-pane"
+            />
           </Card>
           <Card
-            ref={rightResponseRef}
-            className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer overflow-y-auto max-h-96 \
+            className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer \
                         ${pendingSelectionSide === "right" ? "ring-4 ring-indigo-400 dark:ring-indigo-600 border-indigo-500 dark:border-indigo-700" : "border-gray-300 dark:border-gray-700"} \
                         ${isSelectionMade ? "opacity-70 cursor-not-allowed" : "hover:border-indigo-500 dark:hover:border-indigo-400"}`}
             onClick={() => !isSelectionMade && handleSelection("right")}
           >
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.right}</p>
+            <TextPane
+              ref={rightResponseRef}
+              pairedRef={leftResponseRef}
+              text={responses.right}
+              enableHighlight
+              id="right-pane"
+            />
           </Card>
         </div>
       )}

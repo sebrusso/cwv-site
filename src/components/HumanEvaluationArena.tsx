@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TextPane } from "@/components/TextPane";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
@@ -65,14 +66,6 @@ export function HumanEvaluationArena() {
 
   const { user, profile, incrementScore, addViewedPrompt } = useUser();
 
-  const handleHighlight = () => {
-    if (typeof window === "undefined") return;
-    const selection = window.getSelection();
-    const text = selection ? selection.toString().trim() : "";
-    if (text) {
-      setHighlight(text);
-    }
-  };
 
   const dismissHighlightTip = () => {
     if (typeof window !== "undefined") {
@@ -515,15 +508,14 @@ export function HumanEvaluationArena() {
                   }`}
                   onClick={() => !selectedText && handleSelection(texts.left)}
                 >
-                  <div
-                    className="max-h-[500px] overflow-y-auto"
-                    onMouseUp={handleHighlight}
+                  <TextPane
                     ref={leftTextRef}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {texts.left}
-                    </p>
-                  </div>
+                    pairedRef={rightTextRef}
+                    text={texts.left}
+                    enableHighlight
+                    id="he-left-pane"
+                    onHighlight={setHighlight}
+                  />
                 </Card>
               </div>
 
@@ -561,15 +553,14 @@ export function HumanEvaluationArena() {
                   }`}
                   onClick={() => !selectedText && handleSelection(texts.right)}
                 >
-                  <div
-                    className="max-h-[500px] overflow-y-auto"
-                    onMouseUp={handleHighlight}
+                  <TextPane
                     ref={rightTextRef}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {texts.right}
-                    </p>
-                  </div>
+                    pairedRef={leftTextRef}
+                    text={texts.right}
+                    enableHighlight
+                    id="he-right-pane"
+                    onHighlight={setHighlight}
+                  />
                 </Card>
               </div>
             </div>
