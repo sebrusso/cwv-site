@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { useState, useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -63,7 +64,7 @@ export function ModelEvaluationArena() {
   });
   const [currentEvaluationId, setCurrentEvaluationId] = useState<string | null>(null); // For storing model_evaluations.id if needed for rationale
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [showResultFeedback, setShowResultFeedback] = useState(false); // To show some feedback after selection
@@ -72,14 +73,16 @@ export function ModelEvaluationArena() {
   const leftResponseRef = useRef<HTMLDivElement>(null);
   const rightResponseRef = useRef<HTMLDivElement>(null);
 
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const fetchNewLiveComparison = async () => {
     console.log("fetchNewLiveComparison called. User object:", user);
     console.log("Current Supabase auth session:", supabase.auth.getSession()); // Log current session
 
     setError(null);
-    setIsLoading(true);
+    setLoading(true);
     setCurrentDisplayData(null);
     setResponses({ left: "", right: "" });
     setSelectedResponseFullText(null);
@@ -99,7 +102,7 @@ export function ModelEvaluationArena() {
       if (countError) throw countError;
       if (!count || count === 0) {
         setError("No source prompts available in the 'writingprompts-pairwise-test' database table.");
-        setIsLoading(false);
+        setLoading(false);
         return;
       }
       const randomOffset = Math.floor(Math.random() * count);
@@ -156,7 +159,7 @@ export function ModelEvaluationArena() {
       setError(`Failed to fetch new comparison: ${errorMessage}`);
       console.error("Error in fetchNewLiveComparison:", err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -270,11 +273,20 @@ export function ModelEvaluationArena() {
     setShowRationale(false);
     setRationale("");
     // Consider if skipping rationale should immediately load the next prompt
-    // handleNextPrompt(); 
+    // handleNextPrompt();
   };
 
   // --- UI Rendering ---
-  if (isLoading && !currentDisplayData) {
+  if (!user && !isLoading) {
+    return (
+      <div className="text-center py-10">
+        <p className="mb-4">You must be logged in to evaluate.</p>
+        <Button onClick={() => router.push(`/login?redirect=${encodeURIComponent(pathname)}`)}>Log in</Button>
+      </div>
+    );
+  }
+
+  if (loading && !currentDisplayData) {
     return <div className="text-center p-10">Loading new evaluation...</div>;
   }
 
@@ -289,7 +301,7 @@ export function ModelEvaluationArena() {
     );
   }
 
-  if (!currentDisplayData && !isLoading) {
+  if (!currentDisplayData && !loading) {
     return (
       <div className="text-center p-10">
         No prompts available. Please try again later.

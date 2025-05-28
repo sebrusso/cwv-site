@@ -8,9 +8,10 @@ import { CheckCircle2 } from "lucide-react";
 
 interface LoginFormProps {
   onClose?: () => void;
+  redirectPath?: string;
 }
 
-export function LoginForm({ onClose }: LoginFormProps) {
+export function LoginForm({ onClose, redirectPath }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +24,7 @@ export function LoginForm({ onClose }: LoginFormProps) {
     setError(null);
 
     try {
-      const { error } = await signIn(email);
+      const { error } = await signIn(email, redirectPath);
 
       if (error) {
         setError(error.message);

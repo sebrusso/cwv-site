@@ -99,3 +99,13 @@ test('model-leaderboard aggregates results', async () => {
   assert.ok(Math.abs(body[0].winRate - 2 / 3) < 1e-6);
   assert.ok(Math.abs(body[1].winRate - 1 / 3) < 1e-6);
 });
+
+test('auth callback redirects to provided path', async () => {
+  let exchanged;
+  const supabase = { auth: { exchangeCodeForSession: async (c) => { exchanged = c; } } };
+  const { handleAuthCallback } = loadRoute('src/app/auth/callback/route.ts');
+  const res = await handleAuthCallback(supabase, 'code', 'http://site/dest', 'http://site');
+  assert.equal(exchanged, 'code');
+  assert.equal(res.status, 307);
+  assert.equal(res.headers.get('location'), 'http://site/dest');
+});

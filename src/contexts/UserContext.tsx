@@ -24,7 +24,7 @@ type UserContextType = {
   profile: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
-  signIn: (email: string) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, redirectPath?: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   incrementScore: () => Promise<void>;
@@ -92,12 +92,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signIn = async (email: string) => {
+  const signIn = async (email: string, redirectPath?: string) => {
     setIsLoading(true);
     try {
       // Use NEXT_PUBLIC_SITE_URL environment variable if available, otherwise fall back to window.location.origin
-      const redirectUrl =
+      const baseUrl =
         process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const redirectUrl = redirectPath
+        ? `${baseUrl}/auth/callback?redirect=${encodeURIComponent(redirectPath)}`
+        : baseUrl;
 
       const { error } = await supabase.auth.signInWithOtp({
         email,
