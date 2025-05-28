@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -67,6 +67,8 @@ export function ModelEvaluationArena() {
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [showResultFeedback, setShowResultFeedback] = useState(false); // To show some feedback after selection
+  const [isPrefetching, setIsPrefetching] = useState(false);
+  const [prefetchedPromptId, setPrefetchedPromptId] = useState<string | null>(null);
 
 
   const leftResponseRef = useRef<HTMLDivElement>(null);
@@ -74,7 +76,48 @@ export function ModelEvaluationArena() {
 
   const { user } = useUser();
 
-  const fetchNewLiveComparison = async () => {
+  const getRandomPromptId = async () => {
+    const { count, error: countError } = await supabase
+      .from("writingprompts-pairwise-test")
+      .select("id", { count: "exact", head: true });
+    if (countError || !count) throw countError || new Error("No prompts");
+    const randomOffset = Math.floor(Math.random() * count);
+    const { data: randomPromptEntry, error: randomPromptError } = await supabase
+      .from("writingprompts-pairwise-test")
+      .select("id")
+      .range(randomOffset, randomOffset)
+      .single();
+    if (randomPromptError || !randomPromptEntry) throw randomPromptError || new Error("Failed to fetch ID");
+    return randomPromptEntry.id as string;
+  };
+
+  const fetchComparison = async (id: string, prefetch = false) => {
+    const apiResponse = await fetch("/api/generate-live-comparison", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt_db_id: id, prefetch }),
+    });
+    if (!apiResponse.ok) {
+      const errData = await apiResponse.json();
+      throw new Error(errData.error || `API request failed with status ${apiResponse.status}`);
+    }
+    return apiResponse.json();
+  };
+
+  const prefetchNextComparison = useCallback(async () => {
+    try {
+      setIsPrefetching(true);
+      const id = await getRandomPromptId();
+      await fetchComparison(id, true);
+      setPrefetchedPromptId(id);
+    } catch (err) {
+      console.error("Prefetch error", err);
+    } finally {
+      setIsPrefetching(false);
+    }
+  }, []);
+
+  const fetchNewLiveComparison = useCallback(async (promptId?: string) => {
     console.log("fetchNewLiveComparison called. User object:", user);
     console.log("Current Supabase auth session:", supabase.auth.getSession()); // Log current session
 
@@ -85,47 +128,15 @@ export function ModelEvaluationArena() {
     setSelectedResponseFullText(null);
     setPendingSelectionSide(null);
     setCurrentEvaluationId(null);
+    setPrefetchedPromptId(null);
     setShowRationale(false);
     setRationale("");
     setShowResultFeedback(false);
 
 
     try {
-      // 1. Fetch a random prompt_id from the main dataset table 'writingprompts-pairwise-test'
-      const { count, error: countError } = await supabase
-        .from("writingprompts-pairwise-test")
-        .select("id", { count: "exact", head: true });
-
-      if (countError) throw countError;
-      if (!count || count === 0) {
-        setError("No source prompts available in the 'writingprompts-pairwise-test' database table.");
-        setIsLoading(false);
-        return;
-      }
-      const randomOffset = Math.floor(Math.random() * count);
-      const { data: randomPromptEntry, error: randomPromptError } = await supabase
-        .from("writingprompts-pairwise-test")
-        .select("id")
-        .range(randomOffset, randomOffset)
-        .single();
-
-      if (randomPromptError || !randomPromptEntry) throw randomPromptError || new Error("Failed to fetch random prompt ID.");
-
-      const sourcePromptDbId = randomPromptEntry.id;
-
-      // 2. Call the new API route to generate live comparison
-      const apiResponse = await fetch("/api/generate-live-comparison", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt_db_id: sourcePromptDbId }),
-      });
-
-      if (!apiResponse.ok) {
-        const errData = await apiResponse.json();
-        throw new Error(errData.error || `API request failed with status ${apiResponse.status}`);
-      }
-
-      const liveDataFromApi = await apiResponse.json();
+      const id = promptId || (await getRandomPromptId());
+      const liveDataFromApi = await fetchComparison(id);
       
       setCurrentDisplayData({
         source_prompt_db_id: liveDataFromApi.prompt_db_id,
@@ -157,12 +168,13 @@ export function ModelEvaluationArena() {
       console.error("Error in fetchNewLiveComparison:", err);
     } finally {
       setIsLoading(false);
+      void prefetchNextComparison();
     }
-  };
+  }, [prefetchNextComparison, user]);
 
   useEffect(() => {
-    fetchNewLiveComparison();
-  }, []); // Fetch on initial load
+    void fetchNewLiveComparison();
+  }, [fetchNewLiveComparison]); // Fetch on initial load
 
   const handleSelection = (side: "left" | "right") => {
     if (selectedResponseFullText || !currentDisplayData) return; // Already selected or no data
@@ -225,7 +237,7 @@ export function ModelEvaluationArena() {
   };
 
   const handleNextPrompt = () => {
-    fetchNewLiveComparison();
+    fetchNewLiveComparison(prefetchedPromptId || undefined);
   };
 
   const saveRationale = async () => {
@@ -283,7 +295,7 @@ export function ModelEvaluationArena() {
       <Alert variant="destructive" className="mb-4">
         <AlertDescription>
           {error}
-          <Button onClick={fetchNewLiveComparison} className="ml-4">Try Again</Button>
+          <Button onClick={() => void fetchNewLiveComparison()} className="ml-4">Try Again</Button>
         </AlertDescription>
       </Alert>
     );
@@ -293,7 +305,7 @@ export function ModelEvaluationArena() {
     return (
       <div className="text-center p-10">
         No prompts available. Please try again later.
-        <Button onClick={fetchNewLiveComparison} className="ml-4 block mx-auto mt-2">Fetch New Prompt</Button>
+        <Button onClick={() => void fetchNewLiveComparison()} className="ml-4 block mx-auto mt-2">Fetch New Prompt</Button>
       </div>
     );
   }
@@ -375,9 +387,15 @@ export function ModelEvaluationArena() {
       )}
 
       {isSelectionMade && !showRationale && (
-        <Button onClick={handleNextPrompt} className="mt-6 bg-green-600 hover:bg-green-700 text-white">
+        <Button onClick={() => handleNextPrompt()} className="mt-6 bg-green-600 hover:bg-green-700 text-white">
           Next Prompt
         </Button>
+      )}
+      {isPrefetching && (
+        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+          Preparing next prompt...
+        </div>
       )}
     </div>
   );
