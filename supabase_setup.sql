@@ -20,6 +20,13 @@ CREATE TABLE IF NOT EXISTS profiles (
   username TEXT UNIQUE,
   score INTEGER DEFAULT 0,
   viewed_prompts UUID[] DEFAULT '{}',
+  age_range TEXT,
+  education_level TEXT,
+  first_language TEXT,
+  literature_interest TEXT,
+  reading_habits TEXT,
+  writing_background TEXT,
+  demographics_completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -184,8 +191,14 @@ CREATE POLICY "Users can insert their own dataset downloads"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, score, viewed_prompts)
-  VALUES (new.id, new.email, 0, '{}');
+  INSERT INTO public.profiles (
+    id,
+    username,
+    score,
+    viewed_prompts,
+    demographics_completed
+  )
+  VALUES (new.id, new.email, 0, '{}', FALSE);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
