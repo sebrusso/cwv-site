@@ -3,42 +3,46 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export interface HumanModelPayload {
+export interface ComparisonPayload {
+  modelA: string;
+  modelB: string;
+  winner: string;
   promptId: string;
-  modelName: string;
-  guessCorrect: boolean;
 }
 
-export async function handleHumanModelEvaluation(
+export async function handleModelComparison(
   supabase: SupabaseClient,
-  payload: HumanModelPayload
+  payload: ComparisonPayload
 ) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { promptId, modelName, guessCorrect } = payload;
+  const { modelA, modelB, winner, promptId } = payload;
+  if (!modelA || !modelB || !winner || !promptId) {
+    return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+  }
+  if (winner !== modelA && winner !== modelB) {
+    return NextResponse.json({ error: 'Winner must be one of the compared models' }, { status: 400 });
+  }
 
-  const { error } = await supabase.from('human_model_evaluations').insert({
+  const { error } = await supabase.from('model_comparisons').insert({
     user_id: session.user.id,
+    model_a: modelA,
+    model_b: modelB,
+    winner,
     prompt_id: promptId,
-    model_name: modelName,
-    guess_correct: guessCorrect,
   });
 
   if (error) {
-    console.error('Failed to save evaluation', error);
+    console.error('Failed to save model comparison', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
   return NextResponse.json({ success: true });
 }
-
-
 
 export async function POST(req: Request) {
   const cookieStorePromise = cookies();
@@ -63,11 +67,12 @@ export async function POST(req: Request) {
       },
     }
   );
+
   try {
     const payload = await req.json();
-    return handleHumanModelEvaluation(supabase, payload);
+    return handleModelComparison(supabase, payload);
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: 'Failed to save evaluation' }, { status: 500 });
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }

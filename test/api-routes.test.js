@@ -61,7 +61,7 @@ test('download-dataset inserts row for authorized user', async () => {
 
 test('human-model-evaluations unauthorized', async () => {
   const { handleHumanModelEvaluation } = loadRoute('src/app/api/human-model-evaluations/route.ts');
-  const res = await handleHumanModelEvaluation(supabaseMock(null), { prompt_id: 'p1', is_correct: true });
+  const res = await handleHumanModelEvaluation(supabaseMock(null), { promptId: 'p1', modelName: 'm1', guessCorrect: true });
   assert.equal(res.status, 401);
 });
 
@@ -72,10 +72,23 @@ test('human-model-evaluations inserts row', async () => {
     supabaseMock({ user: { id: 'u1' } }, (data) => {
       inserted = data;
     }),
-    { prompt_id: 'p1', is_correct: false }
+    { promptId: 'p1', modelName: 'm1', guessCorrect: false }
   );
   assert.equal(res.status, 200);
-  assert.deepEqual(inserted, { user_id: 'u1', prompt_id: 'p1', is_correct: false });
+  assert.deepEqual(inserted, { user_id: 'u1', prompt_id: 'p1', model_name: 'm1', guess_correct: false });
+});
+
+test('model-comparisons inserts row', async () => {
+  let inserted;
+  const { handleModelComparison } = loadRoute('src/app/api/model-comparisons/route.ts');
+  const res = await handleModelComparison(
+    supabaseMock({ user: { id: 'u1' } }, (data) => {
+      inserted = data;
+    }),
+    { modelA: 'A', modelB: 'B', winner: 'A', promptId: 'p1' }
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(inserted, { user_id: 'u1', model_a: 'A', model_b: 'B', winner: 'A', prompt_id: 'p1' });
 });
 
 test('model-leaderboard aggregates results', async () => {

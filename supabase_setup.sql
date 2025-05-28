@@ -229,6 +229,28 @@ CREATE POLICY "Users can view their own model evaluations"
   ON model_evaluations FOR SELECT
   USING (auth.uid() = user_id);
 
+-- Create model_comparisons table
+CREATE TABLE IF NOT EXISTS model_comparisons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  model_a TEXT NOT NULL,
+  model_b TEXT NOT NULL,
+  winner TEXT NOT NULL,
+  prompt_id UUID REFERENCES live_generations(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on model_comparisons
+ALTER TABLE model_comparisons ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert their own model comparisons"
+  ON model_comparisons FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own model comparisons"
+  ON model_comparisons FOR SELECT
+  USING (auth.uid() = user_id);
+
 -- Create model_writing_rationales table
 CREATE TABLE IF NOT EXISTS model_writing_rationales (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

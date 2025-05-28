@@ -211,6 +211,23 @@ export function ModelEvaluationArena() {
           setError("Failed to save your evaluation. Please try again.");
         } else if (savedEval) {
           console.log("Live evaluation saved, ID:", savedEval.id);
+
+          // record comparison result
+          try {
+            await fetch("/api/model-comparisons", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                modelA: currentDisplayData.model_A_name,
+                modelB: currentDisplayData.model_B_name,
+                winner: selectedModelName,
+                promptId: currentDisplayData.live_generation_id,
+              }),
+            });
+          } catch (cmpErr) {
+            console.error("Failed to save comparison", cmpErr);
+          }
+
           setCurrentEvaluationId(savedEval.id);
           setShowRationale(true); // Prompt for rationale after successful save
         }
