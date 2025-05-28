@@ -9,9 +9,19 @@ const require = createRequire(import.meta.url);
 
 function loadRoute(tsPath) {
   const src = fs.readFileSync(tsPath, 'utf8');
-  const compiled = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  let compiled = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
   const outDir = path.join('.test-tmp');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  
+  // Handle utils.ts for routes that need it
+  const utilsSrc = fs.readFileSync('src/lib/utils.ts', 'utf8');
+  const utilsOut = ts.transpileModule(utilsSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  const utilsPath = path.join(outDir, 'utils.cjs');
+  if (!fs.existsSync(utilsPath)) fs.writeFileSync(utilsPath, utilsOut);
+  
+  // Replace relative imports with the correct path for tests
+  compiled = compiled.replace('../../../lib/utils', './utils.cjs');
+  
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');
   fs.writeFileSync(outPath, compiled);
@@ -106,6 +116,10 @@ test('model-leaderboard aggregates results', async () => {
 });
 
 test('generate-live-comparison cache serves prefetched data', async () => {
+  // Set required environment variables for tests
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.com';
+  process.env.SUPABASE_SERVICE_KEY = 'test-key';
+  
   const { handleGenerateLiveComparison, generationCache } = loadRoute(
     'src/app/api/generate-live-comparison/route.ts'
   );
@@ -128,7 +142,7 @@ test('generate-live-comparison cache serves prefetched data', async () => {
       completions: {
         create: async () => {
           callCount++;
-          return { choices: [{ message: { content: 'text' } }] };
+          return { choices: [{ message: { content: 'This is a complete sentence.' } }] };
         },
       },
     },

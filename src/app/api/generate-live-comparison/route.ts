@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { truncateToSentence } from '../../../lib/utils';
 
 // Initialize Supabase client with the SERVICE ROLE KEY for admin-level operations
 // Ensure SUPABASE_URL and SUPABASE_SERVICE_KEY are in your .env.local and deployment environment
@@ -14,7 +15,6 @@ async function createOpenAI() {
   const OpenAI = (mod as any).default || mod;
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
-
 // Define model names - you can adjust these or make them configurable
 const MODEL_A_NAME = 'gpt-4o'; // Example: Use a powerful model for A
 const MODEL_B_NAME = 'gpt-4o-mini'; // Example: Use a faster/cheaper model for B, or vary parameters
@@ -64,7 +64,6 @@ export async function handleGenerateLiveComparison(
   }
 
   const sourcePromptText = promptData.prompt;
-
   // 2. Generate response A from OpenAI
   const completionA = await openaiClient.chat.completions.create({
     model: MODEL_A_NAME,
@@ -77,8 +76,13 @@ export async function handleGenerateLiveComparison(
     ],
     temperature: 0.7, // You can vary parameters
     max_tokens: 300,
+    stop: ['\n\n'],
   });
   const response_A_text = completionA.choices?.[0]?.message?.content || '';
+  const { text: sentenceA } = truncateToSentence(response_A_text);
+  if (!sentenceA) {
+    return NextResponse.json({ error: 'Generation A ended mid-sentence' }, { status: 500 });
+  }
 
   // 3. Generate response B from OpenAI (could be different model or params)
   const completionB = await openaiClient.chat.completions.create({
@@ -93,11 +97,12 @@ export async function handleGenerateLiveComparison(
     ],
     temperature: 0.8, // Slightly different temperature for variety
     max_tokens: 300,
+    stop: ['\n\n'],
   });
   const response_B_text = completionB.choices?.[0]?.message?.content || '';
-
-  if (!response_A_text || !response_B_text) {
-    return NextResponse.json({ error: 'Failed to generate one or both AI responses' }, { status: 500 });
+  const { text: sentenceB } = truncateToSentence(response_B_text);
+  if (!sentenceB) {
+    return NextResponse.json({ error: 'Generation B ended mid-sentence' }, { status: 500 });
   }
 
   // 4. Save the generated pair to the 'live_generations' table
@@ -106,9 +111,9 @@ export async function handleGenerateLiveComparison(
     .insert({
       prompt_id: promptData.id, // Link to the original prompt_db_id
       model_a_name: MODEL_A_NAME,
-      response_a_text: response_A_text,
+      response_a_text: sentenceA,
       model_b_name: MODEL_B_NAME,
-      response_b_text: response_B_text,
+      response_b_text: sentenceB,
     })
     .select('id')
     .single();
@@ -122,8 +127,8 @@ export async function handleGenerateLiveComparison(
     live_generation_id: liveGenerationData.id,
     prompt_text: sourcePromptText,
     prompt_db_id: promptData.id,
-    response_A: response_A_text,
-    response_B: response_B_text,
+    response_A: sentenceA,
+    response_B: sentenceB,
     model_A_name: MODEL_A_NAME,
     model_B_name: MODEL_B_NAME,
   };

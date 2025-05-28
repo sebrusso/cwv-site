@@ -2,13 +2,14 @@
   "name": "human-eval",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --test"
+    "test": "node --loader ts-node/esm --test"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.6",
@@ -38,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.2.2",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }
