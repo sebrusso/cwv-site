@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase/client";
 import { useEffect, useState, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { usePathname, useRouter } from "next/navigation";
@@ -13,10 +13,6 @@ import { useToast } from "@/contexts/ToastContext";
 
 import { ReportContentButton } from "./ReportContentButton";
 import { AVAILABLE_MODELS } from "@/lib/models/modelConfig";
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
 
 interface PromptRow {
   id: string;
