@@ -10,6 +10,7 @@ import { TextPane } from "@/components/TextPane";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/contexts/ToastContext";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 import { ReportContentButton } from "./ReportContentButton";
 import { AVAILABLE_MODELS } from "@/lib/models/modelConfig";
@@ -315,10 +316,30 @@ export function HumanMachineArena() {
       )}
       
       {result !== null && (
-        <div className="mt-2 text-lg font-medium">
-          {result ? "Correct!" : "Wrong - try again"}
+        <div
+          className={`w-full p-4 rounded-lg flex justify-between items-center ${
+            result
+              ? "bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-200"
+              : "bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {result ? (
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+            ) : (
+              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            )}
+            <span className="font-normal">
+              {result ? "Correct!" : "Wrong - try again"}
+            </span>
+          </div>
           {selectedText && (
-            <Button onClick={handleNextSample} className="ml-4">
+            <Button
+              onClick={handleNextSample}
+              className={`${
+                result ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+              } text-white transform transition-all hover:scale-105 active:scale-95`}
+            >
               Next Sample
             </Button>
           )}
