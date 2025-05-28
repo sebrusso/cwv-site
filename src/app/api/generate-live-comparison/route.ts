@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { truncateToSentence } from '../../../lib/utils';
+import { getSystemInstruction } from '../../../lib/systemInstructions';
 import { generateText } from '../../../lib/models/aiService';
 import { AVAILABLE_MODELS } from '../../../lib/models/modelConfig';
 
@@ -13,7 +14,7 @@ const supabaseAdmin = createClient(
 
 // Models are defined in modelConfig.ts and re-exported here for convenience
 
-export interface GenerationData {
+interface GenerationData {
   live_generation_id: string;
   prompt_text: string;
   prompt_db_id: string;
@@ -67,7 +68,12 @@ async function handleGenerateLiveComparison(
   const response_A_text = await generateText(fetch, {
     prompt: sourcePromptText,
     model: MODEL_A_NAME,
-    params: { temperature: 0.7, max_tokens: 300 },
+    systemMessage: getSystemInstruction(MODEL_A_NAME),
+    params: {
+      temperature: 0.7, // You can vary parameters
+      max_tokens: 300,
+      stop: ['\n\n'],
+    },
   });
   const { text: sentenceA } = truncateToSentence(response_A_text);
   if (!sentenceA) {
@@ -78,7 +84,12 @@ async function handleGenerateLiveComparison(
   const response_B_text = await generateText(fetch, {
     prompt: sourcePromptText,
     model: MODEL_B_NAME,
-    params: { temperature: 0.8, max_tokens: 300 },
+    systemMessage: getSystemInstruction(MODEL_B_NAME),
+    params: {
+      temperature: 0.8, // Slightly different temperature for variety
+      max_tokens: 300,
+      stop: ['\n\n'],
+    },
   });
   const { text: sentenceB } = truncateToSentence(response_B_text);
   if (!sentenceB) {

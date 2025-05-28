@@ -18,9 +18,15 @@ function loadRoute(tsPath) {
   const utilsOut = ts.transpileModule(utilsSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
   const utilsPath = path.join(outDir, 'utils.cjs');
   if (!fs.existsSync(utilsPath)) fs.writeFileSync(utilsPath, utilsOut);
-  
+  const sysSrc = fs.readFileSync('src/lib/systemInstructions.ts', 'utf8');
+  const sysOut = ts.transpileModule(sysSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  const sysPath = path.join(outDir, 'systemInstructions.cjs');
+  if (!fs.existsSync(sysPath)) fs.writeFileSync(sysPath, sysOut);
+
   // Replace relative imports with the correct path for tests
-  compiled = compiled.replace('../../../lib/utils', './utils.cjs');
+  compiled = compiled
+    .replace('../../../lib/utils', './utils.cjs')
+    .replace('../../../lib/systemInstructions', './systemInstructions.cjs');
   
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');

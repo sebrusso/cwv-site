@@ -14,11 +14,21 @@ function loadRoute(tsPath) {
   }).outputText;
   const outDir = path.join('.test-tmp');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
-  const utilsSrc = fs.readFileSync('src/lib/utils.ts', 'utf8');
-  const utilsOut = ts.transpileModule(utilsSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
-  const utilsPath = path.join(outDir, 'utils.cjs');
-  if (!fs.existsSync(utilsPath)) fs.writeFileSync(utilsPath, utilsOut);
-  compiled = compiled.replace('../../../lib/utils', './utils.cjs');
+
+  const transpileAndWrite = (srcFile, outFilePrefix, relativePath) => {
+    const src = fs.readFileSync(srcFile, 'utf8');
+    const out = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+    const outPath = path.join(outDir, `${outFilePrefix}.cjs`);
+    if (!fs.existsSync(outPath)) fs.writeFileSync(outPath, out);
+    // Replace relative paths in the compiled code
+    compiled = compiled.replace(new RegExp(relativePath.replace(/\//g, '\\/'), 'g'), `./${outFilePrefix}.cjs`);
+  };
+
+  transpileAndWrite('src/lib/utils.ts', 'utils', '../../../lib/utils');
+  transpileAndWrite('src/lib/systemInstructions.ts', 'systemInstructions', '../../../lib/systemInstructions');
+  transpileAndWrite('src/lib/models/aiService.ts', 'aiService', '../../../lib/models/aiService');
+  transpileAndWrite('src/lib/models/modelConfig.ts', 'modelConfig', '../../../lib/models/modelConfig');
+  
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');
   fs.writeFileSync(outPath, compiled);
@@ -116,7 +126,13 @@ test('generate-openai uses provided parameters', async () => {
       json: async () => ({ choices: [{ message: { content: 'Done.' }, finish_reason: 'stop' }] }),
     };
   };
-  const res = await handleGenerateOpenAI(fetchMock, { prompt: 'hi', model: 'gpt', params: { temperature: 0.9 } });
+  const res = await handleGenerateOpenAI(fetchMock, { prompt: 'hi', model: 'gpt-test', params: { temperature: 0.9 } });
   assert.equal(res.status, 200);
   assert.equal(captured.temperature, 0.9);
+  const systemMessage = captured.messages.find(m => m.role === 'system');
+  assert.ok(systemMessage, 'System message should be present');
+  // Check if systemInstructions.getSystemInstruction was called for 'gpt-test' (or a default)
+  // This requires systemInstructions.ts to export a simple getSystemInstruction for testing or actual logic.
+  // For this test, we assume getSystemInstruction returns a non-empty string for 'gpt-test' or any model.
+  assert.ok(systemMessage.content.length > 0, 'System message content should not be empty');
 });
