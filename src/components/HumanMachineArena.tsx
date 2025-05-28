@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase/client";
 import { useEffect, useState, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { usePathname, useRouter } from "next/navigation";
@@ -12,10 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/contexts/ToastContext";
 
 import { ReportContentButton } from "./ReportContentButton";
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+import { AVAILABLE_MODELS } from "@/lib/models/modelConfig";
 
 interface PromptRow {
   id: string;
@@ -23,7 +20,7 @@ interface PromptRow {
   chosen: string;
 }
 
-const MODELS = ["gpt-4o", "gpt-4.5-turbo", "gpt-4o-mini", "gpt-4.0"];
+const MODELS = AVAILABLE_MODELS;
 
 export function HumanMachineArena() {
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
@@ -42,7 +39,6 @@ export function HumanMachineArena() {
   });
   const [result, setResult] = useState<boolean | null>(null);
   const [selectedText, setSelectedText] = useState<string | null>(null);
-  const [highlight, setHighlight] = useState<string>("");
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
   const [pendingSelectionSide, setPendingSelectionSide] = useState<"left" | "right" | null>(null);
 
@@ -90,7 +86,8 @@ export function HumanMachineArena() {
     setProgress(20);
     setResult(null);
     setSelectedText(null);
-    setHighlight("");
+    setTexts({ left: "", right: "" });
+    setCurrentPromptId(null);
     setPendingSelection(null);
     setPendingSelectionSide(null);
     
@@ -189,7 +186,6 @@ export function HumanMachineArena() {
   const handleNextSample = () => {
     setSelectedText(null);
     setResult(null);
-    setHighlight("");
     setTexts({ left: "", right: "" });
     setCurrentPromptId(null);
     setPendingSelection(null);
@@ -251,7 +247,6 @@ export function HumanMachineArena() {
                 text={texts.left}
                 enableHighlight
                 id="hm-left-pane"
-                onHighlight={setHighlight}
               />
             </Card>
           </div>
@@ -278,7 +273,6 @@ export function HumanMachineArena() {
                 text={texts.right}
                 enableHighlight
                 id="hm-right-pane"
-                onHighlight={setHighlight}
               />
             </Card>
           </div>

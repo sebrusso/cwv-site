@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase/client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -10,11 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
 import { ModelSelector } from "@/components/ModelSelector";
 
-// Initialize Supabase client (used for client-side reads if any, and by old logic if not fully removed)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Supabase client
 
 function similarity(a: string, b: string) {
   const setA = new Set(a.split(/\s+/));
@@ -75,7 +71,6 @@ export function ModelEvaluationArena() {
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [evaluationStart, setEvaluationStart] = useState<number>(0);
-  const [isPrefetching, setIsPrefetching] = useState(false);
   const [prefetchedPromptId, setPrefetchedPromptId] = useState<string | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
@@ -104,14 +99,21 @@ export function ModelEvaluationArena() {
       } catch (err) {
         console.error("Failed to fetch available models:", err);
         // Fallback models if API fails
-        setAvailableModels(['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo']);
+        setAvailableModels([
+          'gpt-4o',
+          'gpt-4o-mini',
+          'gpt-4-turbo',
+          'gpt-3.5-turbo',
+          'claude-3-opus',
+          'gemini-pro',
+        ]);
       }
     };
 
     fetchAvailableModels();
   }, []);
 
-  const getRandomPromptId = async () => {
+  const getRandomPromptId = useCallback(async () => {
     const { count, error: countError } = await supabase
       .from("writingprompts-pairwise-test")
       .select("id", { count: "exact", head: true });
@@ -126,7 +128,7 @@ export function ModelEvaluationArena() {
       .single();
     if (randomPromptError || !randomPromptEntry) throw randomPromptError || new Error("Failed to fetch ID");
     return randomPromptEntry.id as string;
-  };
+  }, [isClientMounted]);
 
   const fetchComparison = async (id: string, modelA: string, modelB: string, prefetch = false) => {
     const apiResponse = await fetch("/api/generate-live-comparison", {
@@ -145,16 +147,13 @@ export function ModelEvaluationArena() {
     if (!selectedModels) return;
     
     try {
-      setIsPrefetching(true);
       const id = await getRandomPromptId();
       await fetchComparison(id, selectedModels.modelA, selectedModels.modelB, true);
       setPrefetchedPromptId(id);
     } catch (err) {
       console.error("Prefetch error", err);
-    } finally {
-      setIsPrefetching(false);
     }
-  }, [selectedModels, isClientMounted]);
+  }, [selectedModels, getRandomPromptId]);
 
   const generateComparison = async (promptId?: string) => {
     if (!selectedModels) {
@@ -394,7 +393,7 @@ export function ModelEvaluationArena() {
           <h2 className="text-xl font-semibold mb-4">Choose Models to Compare</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Select two AI models to generate stories for comparison. The models will create responses to the same prompt, 
-            and you'll evaluate which response you prefer.
+            and you&apos;ll evaluate which response you prefer.
           </p>
         </div>
         

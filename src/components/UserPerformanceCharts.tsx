@@ -131,7 +131,7 @@ export default function UserPerformanceCharts() {
       <div className="flex flex-col gap-4 p-6 border border-gray-200 rounded-lg bg-gray-50">
         <h3 className="text-lg font-semibold text-gray-800">Welcome to Your Dashboard!</h3>
         <p className="text-gray-600">
-          You haven't completed any evaluations yet. Start evaluating to see your performance metrics here.
+          You haven&apos;t completed any evaluations yet. Start evaluating to see your performance metrics here.
         </p>
         <a 
           href="/human-machine" 
@@ -175,8 +175,8 @@ export default function UserPerformanceCharts() {
           </p>
           <p className="text-sm text-gray-600">
             {data.ranking.totalUsers > 1 
-              ? `You're in the top ${Math.round((data.ranking.position / data.ranking.totalUsers) * 100)}%`
-              : "You're the only user so far!"
+              ? `You&apos;re in the top ${Math.round((data.ranking.position / data.ranking.totalUsers) * 100)}%`
+              : "You&apos;re the only user so far!"
             }
           </p>
         </div>

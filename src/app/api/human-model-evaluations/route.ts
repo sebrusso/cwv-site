@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function handleHumanModelEvaluation(
+async function handleHumanModelEvaluation(
   supabase: SupabaseClient,
   { prompt_id, is_correct, model_name = '' }: { prompt_id: string; is_correct: boolean; model_name?: string },
 ) {
