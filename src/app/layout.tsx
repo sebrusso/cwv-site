@@ -5,6 +5,7 @@ import { inter } from "@/lib/fonts"; // New import for local Inter
 import { UserProvider } from "@/contexts/UserContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { NavigationBar } from "@/components/NavigationBar";
+import { OnboardingDebugPanel } from "@/components/OnboardingDebugPanel";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,6 +41,7 @@ export default function RootLayout({
               <NavigationBar />
               {children}
             </main>
+            <OnboardingDebugPanel />
           </UserProvider>
         </ToastProvider>
       </body>

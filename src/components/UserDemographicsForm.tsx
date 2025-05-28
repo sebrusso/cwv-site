@@ -94,7 +94,8 @@ export function UserDemographicsForm() {
     setError(null);
     
     try {
-      await updateProfile({
+      console.log('Submitting demographics form...');
+      const updatedProfile = await updateProfile({
         age_range: ageRange,
         education_level: educationLevel,
         first_language: firstLanguage,
@@ -102,10 +103,16 @@ export function UserDemographicsForm() {
         writing_background: writingBackground.join(", "),
         demographics_completed: true,
       });
+      
+      console.log('Demographics form submitted successfully:', updatedProfile);
+      
+      // Small delay to ensure state updates propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       router.push("/");
     } catch (err) {
       console.error("Error saving profile:", err);
-      setError("Failed to save your information. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to save your information. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -116,11 +123,18 @@ export function UserDemographicsForm() {
     setError(null);
     
     try {
-      await updateProfile({ demographics_completed: true });
+      console.log('Skipping demographics form...');
+      const updatedProfile = await updateProfile({ demographics_completed: true });
+      
+      console.log('Demographics form skipped successfully:', updatedProfile);
+      
+      // Small delay to ensure state updates propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       router.push("/");
     } catch (err) {
       console.error("Error updating profile:", err);
-      setError("Failed to update your profile. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to update your profile. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -87,6 +87,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId);
+      
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -94,40 +96,96 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) {
-        // If profile doesn't exist, create a default one
-        if (error.code === 'PGRST116') { // No rows returned
-          console.log("No profile found, creating default profile");
-          const defaultProfile: UserProfile = {
-            id: userId,
-            username: user?.email || '',
-            score: 0,
-            viewed_prompts: [],
-            demographics_completed: false
-          };
-          setProfile(defaultProfile);
+        console.log('Profile fetch error:', error);
+        
+        // If profile doesn't exist, wait a moment for potential database trigger to complete
+        if (error.code === 'PGRST116') {
+          console.log("No profile found, waiting for potential trigger completion...");
           
-          // Try to create the profile in the database
+          // Wait 1 second and try again in case the trigger is still processing
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const { data: retryData, error: retryError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", userId)
+            .single();
+            
+          if (!retryError && retryData) {
+            console.log("Profile found on retry:", retryData);
+            setProfile(retryData);
+            
+            // Check if onboarding redirect is needed
+            const protectedPaths = ["/onboarding", "/model-evaluation", "/human-machine", "/leaderboard", "/dashboard", "/resources"];
+            const isOnProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
+            
+            if (!retryData.demographics_completed && pathname === "/") {
+              console.log("Redirecting to onboarding from home page");
+              router.push("/onboarding");
+            }
+            
+            setIsLoading(false);
+            return;
+          }
+          
+          // If still no profile, create one manually
+          console.log("Creating default profile manually...");
           try {
-            await supabase.from("profiles").insert(defaultProfile);
+            const defaultProfile = {
+              id: userId,
+              username: user?.email || '',
+              score: 0,
+              viewed_prompts: [],
+              demographics_completed: false
+            };
+            
+            const { data: createdProfile, error: createError } = await supabase
+              .from("profiles")
+              .insert(defaultProfile)
+              .select()
+              .single();
+              
+            if (createError) {
+              console.error("Error creating profile:", createError);
+              // Set default profile in state even if DB insert fails
+              setProfile(defaultProfile);
+            } else {
+              console.log("Profile created successfully:", createdProfile);
+              setProfile(createdProfile);
+            }
+            
+            // Redirect to onboarding since this is a new profile
+            if (pathname === "/") {
+              console.log("Redirecting new user to onboarding");
+              router.push("/onboarding");
+            }
+            
           } catch (insertError) {
             console.error("Error creating default profile:", insertError);
+            // Create profile in state only as fallback
+            setProfile({
+              id: userId,
+              username: user?.email || '',
+              score: 0,
+              viewed_prompts: [],
+              demographics_completed: false
+            });
           }
         } else {
-          console.error("Error fetching profile:", error);
+          console.error("Unexpected error fetching profile:", error);
         }
         setIsLoading(false);
         return;
       }
 
+      console.log('Profile fetched successfully:', data);
       setProfile(data);
+      
       // Only redirect to onboarding if:
       // 1. Demographics not completed
-      // 2. Not already on onboarding page
-      // 3. Not on other protected paths like model-evaluation, human-machine, etc.
-      const protectedPaths = ["/onboarding", "/model-evaluation", "/human-machine", "/leaderboard", "/dashboard", "/resources"];
-      const isOnProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
-      
-      if (!data.demographics_completed && !isOnProtectedPath) {
+      // 2. User is on the home page (not on onboarding or other protected paths)
+      if (!data.demographics_completed && pathname === "/") {
+        console.log("Redirecting to onboarding - demographics not completed");
         router.push("/onboarding");
       }
     } catch (error) {
@@ -220,38 +278,58 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       console.log('Updating profile for user:', user.id);
       console.log('Updates:', updates);
       
+      // First, get the current profile from database to ensure we have latest data
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching current profile:', fetchError);
+        throw new Error(`Failed to fetch current profile: ${fetchError.message}`);
+      }
+
+      // Prepare the profile data for upsert
+      const profileData = {
+        id: user.id,
+        username: user.email || '',
+        score: 0,
+        viewed_prompts: [],
+        demographics_completed: false,
+        // Include current profile data if it exists
+        ...(currentProfile || {}),
+        // Apply the updates
+        ...updates
+      };
+
+      console.log('Profile data for upsert:', profileData);
+
       // Use upsert to handle cases where profile doesn't exist yet
       const { data, error } = await supabase
         .from("profiles")
-        .upsert({
-          id: user.id,
-          username: user.email || '',
-          score: 0,
-          viewed_prompts: [],
-          demographics_completed: false,
-          ...updates
-        }, {
+        .upsert(profileData, {
           onConflict: 'id'
         })
-        .select();
+        .select()
+        .single();
 
-      console.log('Supabase response:', { data, error });
+      console.log('Supabase upsert response:', { data, error });
 
       if (error) {
         console.error('Supabase error details:', error);
         throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
       }
 
-      setProfile((prev) => (prev ? { ...prev, ...updates } : {
-        id: user.id,
-        username: user.email || '',
-        score: 0,
-        viewed_prompts: [],
-        demographics_completed: false,
-        ...updates
-      } as UserProfile));
+      if (!data) {
+        throw new Error('No data returned from profile update');
+      }
+
+      // Only update local state after successful database operation
+      setProfile(data);
       
-      console.log('Profile updated successfully');
+      console.log('Profile updated successfully:', data);
+      return data;
     } catch (error) {
       console.error("Error updating profile:", error);
       throw error; // Re-throw so the calling component can handle it
