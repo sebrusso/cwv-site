@@ -9,9 +9,19 @@ const require = createRequire(import.meta.url);
 
 function loadRoute(tsPath) {
   const src = fs.readFileSync(tsPath, 'utf8');
-  const compiled = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  let compiled = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
   const outDir = path.join('.test-tmp');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  
+  // Handle utils.ts for routes that need it
+  const utilsSrc = fs.readFileSync('src/lib/utils.ts', 'utf8');
+  const utilsOut = ts.transpileModule(utilsSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  const utilsPath = path.join(outDir, 'utils.cjs');
+  if (!fs.existsSync(utilsPath)) fs.writeFileSync(utilsPath, utilsOut);
+  
+  // Replace relative imports with the correct path for tests
+  compiled = compiled.replace('../../../lib/utils', './utils.cjs');
+  
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');
   fs.writeFileSync(outPath, compiled);
@@ -75,7 +85,12 @@ test('human-model-evaluations inserts row', async () => {
     { prompt_id: 'p1', is_correct: false }
   );
   assert.equal(res.status, 200);
-  assert.deepEqual(inserted, { user_id: 'u1', prompt_id: 'p1', is_correct: false });
+  assert.deepEqual(inserted, {
+    user_id: 'u1',
+    prompt_id: 'p1',
+    model_name: '',
+    guess_correct: false,
+  });
 });
 
 test('model-leaderboard aggregates results', async () => {
@@ -98,4 +113,47 @@ test('model-leaderboard aggregates results', async () => {
   assert.deepEqual(body.map((r) => r.model), ['A', 'B']);
   assert.ok(Math.abs(body[0].winRate - 2 / 3) < 1e-6);
   assert.ok(Math.abs(body[1].winRate - 1 / 3) < 1e-6);
+});
+
+test('generate-live-comparison cache serves prefetched data', async () => {
+  // Set required environment variables for tests
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.com';
+  process.env.SUPABASE_SERVICE_KEY = 'test-key';
+  
+  const { handleGenerateLiveComparison, generationCache } = loadRoute(
+    'src/app/api/generate-live-comparison/route.ts'
+  );
+
+  let callCount = 0;
+  const supabase = {
+    from: (table) => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({ data: { id: 'p1', prompt: 'test prompt' }, error: null }),
+        }),
+      }),
+      insert: () => ({
+        select: () => ({ single: async () => ({ data: { id: 'g1' }, error: null }) }),
+      }),
+    }),
+  };
+  const openai = {
+    chat: {
+      completions: {
+        create: async () => {
+          callCount++;
+          return { choices: [{ message: { content: 'This is a complete sentence.' } }] };
+        },
+      },
+    },
+  };
+
+  await handleGenerateLiveComparison(supabase, openai, { prompt_db_id: 'p1', prefetch: true });
+  assert.equal(callCount, 2);
+
+  const res = await handleGenerateLiveComparison(supabase, openai, { prompt_db_id: 'p1' });
+  assert.equal(callCount, 2);
+  const body = await res.json();
+  assert.equal(body.prompt_db_id, 'p1');
+  assert.ok(!generationCache.has('p1'));
 });
