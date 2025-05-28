@@ -114,7 +114,65 @@ test('generate-live-comparison trims both responses', async () => {
   assert.equal(body.response_A, 'A sentence.');
   assert.equal(body.response_B, 'Another full sentence.');
 });
+test('generate-live-comparison accepts custom prompt text', async () => {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.com';
+  process.env.SUPABASE_SERVICE_KEY = 'test-key';
 
+  const { handleGenerateLiveComparison } = loadRoute('src/app/api/generate-live-comparison/route.ts');
+  let insertedPromptTextInDb; // To check what's inserted in DB
+  let promptTextUsedForGeneration; // To check what's passed to AI generation
+
+  const supabaseMock = {
+    from: (table) => {
+      if (table === 'writingprompts-pairwise-test') {
+        return {
+          insert: (data) => {
+            insertedPromptTextInDb = data.prompt; // Capture the prompt text being inserted
+            return {
+              select: () => ({
+                single: async () => ({ data: { id: 'new1', prompt: data.prompt }, error: null })
+              })
+            };
+          },
+          select: () => ({ // Fallback for non-custom prompt path, not strictly needed for this test
+            eq: () => ({ single: async () => ({ data: { id: 'p1', prompt: 'Default Prompt' }, error: null }) }),
+          }),
+        };
+      }
+      if (table === 'live_generations') {
+        return {
+          insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'g1' }, error: null }) }) })
+        };
+      }
+      return {};
+    }
+  };
+
+  // Mock global.fetch as aiService.generateText uses it
+  const originalFetch = global.fetch;
+  // @ts-ignore
+  global.fetch = async (url, init) => {
+    if (url.includes('api.openai.com')) { // Check if it's an OpenAI call
+      const body = JSON.parse(init.body as string);
+      promptTextUsedForGeneration = body.messages.find(m => m.role === 'user')?.content;
+    }
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Done.' }, finish_reason: 'stop' }] }),
+      text: async () => "Done." // Fallback for non-JSON responses if any
+    };
+  };
+
+  // Call with prompt_text, no openai client needed in the call
+  const res = await handleGenerateLiveComparison(supabaseMock, { prompt_text: 'My custom test prompt' });
+  global.fetch = originalFetch; // Restore original fetch
+
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.prompt_text, 'My custom test prompt'); // Check if the API returns the custom prompt
+  assert.equal(insertedPromptTextInDb, 'My custom test prompt'); // Check if custom prompt was "inserted"
+  assert.equal(promptTextUsedForGeneration, 'My custom test prompt'); // Check if custom prompt was used for AI generation
+});
 
 test('generate-openai uses provided parameters', async () => {
   const { handleGenerateOpenAI } = loadRoute('src/app/api/generate-openai/route.ts');
