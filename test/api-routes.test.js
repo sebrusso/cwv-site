@@ -194,3 +194,20 @@ test('model-quality-leaderboard aggregates comparisons', async () => {
   assert.equal(body.leaderboard[0].model, 'B');
   assert.equal(body.matrix['A']['B'], 1);
 });
+
+test('human-deception-leaderboard aggregates results', async () => {
+  const { handleHumanLeaderboard } = loadRoute('src/app/api/human-deception-leaderboard/route.ts');
+  const supabase = supabaseSelectMock({
+    human_model_evaluations: [
+      { model_name: 'A', guess_correct: false },
+      { model_name: 'A', guess_correct: true },
+      { model_name: 'B', guess_correct: false },
+    ],
+  });
+  const res = await handleHumanLeaderboard(supabase);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.deepEqual(body.map((r) => r.model), ['B', 'A']);
+  assert.ok(Math.abs(body[0].deceptionRate - 1) < 1e-6);
+  assert.ok(Math.abs(body[1].deceptionRate - 0.5) < 1e-6);
+});
