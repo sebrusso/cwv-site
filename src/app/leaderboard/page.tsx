@@ -1,18 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { Tabs } from '@/components/Tabs';
+import { LeaderboardTable, TableColumn } from '@/components/LeaderboardTable';
+import {
+  sortBySuccessRate,
+  sortByWinRate,
+  HumanDeceptionEntry,
+  QualityEntry,
+} from '@/lib/leaderboard';
 
-interface Entry {
-  model: string;
-  total: number;
-  successRate: number;
-}
-
-function sortByRate(a: Entry, b: Entry) {
-  return b.successRate - a.successRate;
-}
-
-export default function LeaderboardPage() {
-  const [entries, setEntries] = useState<Entry[]>([]);
+function HumanDeceptionLeaderboard() {
+  const [entries, setEntries] = useState<HumanDeceptionEntry[]>([]);
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
 
@@ -22,7 +20,9 @@ export default function LeaderboardPage() {
       if (start) params.set('start', start);
       if (end) params.set('end', end);
       try {
-        const res = await fetch(`/api/human-deception-leaderboard?${params.toString()}`);
+        const res = await fetch(
+          `/api/human-deception-leaderboard?${params.toString()}`,
+        );
         if (res.ok) {
           const data = await res.json();
           setEntries(data);
@@ -34,11 +34,19 @@ export default function LeaderboardPage() {
     fetchData();
   }, [start, end]);
 
-  const sorted = [...entries].sort(sortByRate);
+  const columns: TableColumn<HumanDeceptionEntry>[] = [
+    { key: 'model', label: 'Model', sortable: true },
+    { key: 'total', label: 'Evaluations', sortable: true },
+    {
+      key: 'successRate',
+      label: 'Success Rate',
+      sortable: true,
+      render: (r) => `${(r.successRate * 100).toFixed(1)}%`,
+    },
+  ];
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Model Leaderboard</h1>
+    <div className="space-y-2">
       <div className="flex gap-2 items-center">
         <label className="text-sm">
           Start:
@@ -59,36 +67,69 @@ export default function LeaderboardPage() {
           />
         </label>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                #
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Model
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Evaluations
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Success Rate
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-            {sorted.map((e, i) => (
-              <tr key={e.model}>
-                <td className="px-4 py-2 text-sm">{i + 1}</td>
-                <td className="px-4 py-2 text-sm">{e.model}</td>
-                <td className="px-4 py-2 text-sm">{e.total}</td>
-                <td className="px-4 py-2 text-sm">{(e.successRate * 100).toFixed(1)}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <LeaderboardTable
+        entries={sortBySuccessRate(entries)}
+        columns={columns}
+        exportName="human-deception.csv"
+      />
+    </div>
+  );
+}
+
+function ModelComparisonLeaderboard() {
+  const [entries, setEntries] = useState<QualityEntry[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch('/api/model-quality-leaderboard');
+        if (res.ok) {
+          const data = await res.json();
+          setEntries(data.leaderboard);
+        }
+      } catch {
+        // ignore errors for now
+      }
+    };
+    fetchData();
+  }, []);
+
+  const columns: TableColumn<QualityEntry & { winRate: number }>[] = [
+    { key: 'model', label: 'Model', sortable: true },
+    { key: 'wins', label: 'Wins', sortable: true },
+    { key: 'losses', label: 'Losses', sortable: true },
+    {
+      key: 'winRate',
+      label: 'Win Rate',
+      sortable: true,
+      render: (r) => `${(r.winRate * 100).toFixed(1)}%`,
+    },
+  ];
+
+  const withRate = entries.map((e) => ({
+    ...e,
+    winRate: e.wins + e.losses ? e.wins / (e.wins + e.losses) : 0,
+  }));
+
+  return (
+    <LeaderboardTable
+      entries={sortByWinRate(withRate)}
+      columns={columns}
+      exportName="model-vs-model.csv"
+    />
+  );
+}
+
+export default function LeaderboardPage() {
+  return (
+    <div className="max-w-4xl mx-auto space-y-4">
+      <h1 className="text-2xl font-semibold">Leaderboards</h1>
+      <Tabs
+        tabs={[
+          { key: 'deception', title: 'Human Deception', content: <HumanDeceptionLeaderboard /> },
+          { key: 'quality', title: 'Model vs Model', content: <ModelComparisonLeaderboard /> },
+        ]}
+      />
     </div>
   );
 }
