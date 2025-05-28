@@ -4,6 +4,7 @@ import { truncateToSentence } from '../utils';
 export interface GenerateOptions {
   temperature?: number;
   max_tokens?: number;
+  stop?: string[];
 }
 
 export async function generateText(
@@ -11,8 +12,9 @@ export async function generateText(
   {
     prompt,
     model,
+    systemMessage,
     params,
-  }: { prompt: string; model: string; params?: GenerateOptions },
+  }: { prompt: string; model: string; systemMessage?: string; params?: GenerateOptions },
 ) {
   const config = getModelConfig(model);
   if (!config) {
@@ -34,13 +36,13 @@ export async function generateText(
             {
               role: 'system',
               content:
-                'You are an assistant generating a short creative writing sample based on the user prompt.',
+                systemMessage || 'You are an assistant generating a short creative writing sample based on the user prompt.',
             },
             { role: 'user', content: prompt },
           ],
           temperature: opts.temperature,
           max_tokens: opts.max_tokens,
-          stop: ['\n\n'],
+          ...(opts.stop && { stop: opts.stop }),
         }),
       });
       if (!res.ok) {
