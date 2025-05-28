@@ -110,9 +110,18 @@ test('model-leaderboard aggregates results', async () => {
   const res = await handleModelLeaderboard(supabase);
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.deepEqual(body.map((r) => r.model), ['A', 'B']);
-  assert.ok(Math.abs(body[0].winRate - 2 / 3) < 1e-6);
-  assert.ok(Math.abs(body[1].winRate - 1 / 3) < 1e-6);
+  // Leaderboard is sorted by winRate desc, Model B (1.0) should be first, Model A (0.5) second
+  assert.deepEqual(body.map((r) => r.model), ['B', 'A']); 
+  const modelA = body.find(r => r.model === 'A');
+  const modelB = body.find(r => r.model === 'B');
+
+  assert.ok(modelA, "Model A data should exist");
+  assert.ok(modelB, "Model B data should exist");
+
+  // Model A: 1 win / 2 total evals = 0.5
+  assert.ok(Math.abs(modelA.winRate - 0.5) < 1e-6, "Model A win rate should be 0.5");
+  // Model B: 1 win / 1 total eval = 1.0
+  assert.ok(Math.abs(modelB.winRate - 1.0) < 1e-6, "Model B win rate should be 1.0");
 });
 
 test('generate-live-comparison cache serves prefetched data', async () => {

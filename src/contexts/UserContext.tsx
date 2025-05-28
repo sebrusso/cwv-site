@@ -25,6 +25,12 @@ type UserContextType = {
   session: Session | null;
   isLoading: boolean;
   signIn: (email: string) => Promise<{ error: AuthError | null }>;
+  signInWithPassword: (
+    email: string,
+    password: string,
+    remember?: boolean
+  ) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   incrementScore: () => Promise<void>;
@@ -118,6 +124,43 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithPassword = async (
+    email: string,
+    password: string
+  ) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error: error as AuthError };
+    } catch (err) {
+      console.error("Error signing in:", err);
+      const error =
+        err instanceof Error
+          ? ({ message: err.message } as AuthError)
+          : ({ message: "An unknown error occurred" } as AuthError);
+      return { error };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signUp = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      return { error: error as AuthError };
+    } catch (err) {
+      console.error("Error signing up:", err);
+      const error =
+        err instanceof Error
+          ? ({ message: err.message } as AuthError)
+          : ({ message: "An unknown error occurred" } as AuthError);
+      return { error };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signOut = async () => {
     setIsLoading(true);
     await supabase.auth.signOut();
@@ -174,6 +217,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     session,
     isLoading,
     signIn,
+    signInWithPassword,
+    signUp,
     signOut,
     updateProfile,
     incrementScore,
