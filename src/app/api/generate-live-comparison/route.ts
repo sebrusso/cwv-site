@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { truncateToSentence } from '../../../lib/utils';
+import { getSystemInstruction } from '../../../lib/systemInstructions';
 
 // Initialize Supabase client with the SERVICE ROLE KEY for admin-level operations
 // Ensure SUPABASE_URL and SUPABASE_SERVICE_KEY are in your .env.local and deployment environment
@@ -83,7 +84,7 @@ export async function handleGenerateLiveComparison(
     messages: [
       {
         role: 'system',
-        content: 'You are an assistant generating a short creative writing sample based on the user prompt.',
+        content: getSystemInstruction(MODEL_A_NAME),
       },
       { role: 'user', content: sourcePromptText },
     ],
@@ -103,8 +104,7 @@ export async function handleGenerateLiveComparison(
     messages: [
       {
         role: 'system',
-        content:
-          'You are an assistant generating a short creative writing sample based on the user prompt. Try to offer a different style or take than other responses.',
+        content: getSystemInstruction(MODEL_B_NAME),
       },
       { role: 'user', content: sourcePromptText },
     ],

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { truncateToSentence, isValidLength } from '../../../lib/utils';
+import { getSystemInstruction } from '../../../lib/systemInstructions';
 
 export async function handleGenerateOpenAI(
   fetchFn: typeof fetch,
@@ -22,8 +23,7 @@ export async function handleGenerateOpenAI(
       messages: [
         {
           role: 'system',
-          content:
-            'You are an assistant generating a short creative writing sample based on the user prompt.',
+          content: getSystemInstruction(model),
         },
         { role: 'user', content: prompt },
       ],
