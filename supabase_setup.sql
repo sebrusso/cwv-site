@@ -20,6 +20,13 @@ CREATE TABLE IF NOT EXISTS profiles (
   username TEXT UNIQUE,
   score INTEGER DEFAULT 0,
   viewed_prompts UUID[] DEFAULT '{}',
+  age_range TEXT,
+  education_level TEXT,
+  first_language TEXT,
+  literature_interest TEXT,
+  reading_habits TEXT,
+  writing_background TEXT,
+  demographics_completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -131,6 +138,19 @@ CREATE TABLE IF NOT EXISTS dataset_downloads (
 -- Enable RLS on dataset_downloads
 ALTER TABLE dataset_downloads ENABLE ROW LEVEL SECURITY;
 
+-- Create evaluation_quality_metrics table
+CREATE TABLE IF NOT EXISTS evaluation_quality_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  evaluation_time_ms INTEGER,
+  prompt_similarity DOUBLE PRECISION,
+  confidence_score DOUBLE PRECISION,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on evaluation_quality_metrics
+ALTER TABLE evaluation_quality_metrics ENABLE ROW LEVEL SECURITY;
+
 -- Create RLS policies
 
 -- Profiles policies
@@ -180,12 +200,26 @@ CREATE POLICY "Users can insert their own dataset downloads"
   ON dataset_downloads FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+-- Evaluation quality metrics policies
+CREATE POLICY "Users can insert their own evaluation quality metrics"
+  ON evaluation_quality_metrics FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can view their own evaluation quality metrics"
+  ON evaluation_quality_metrics FOR SELECT
+  USING (auth.uid() = user_id);
+
 -- Create a function to handle new user signups
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, score, viewed_prompts)
-  VALUES (new.id, new.email, 0, '{}');
+  INSERT INTO public.profiles (
+    id,
+    username,
+    score,
+    viewed_prompts,
+    demographics_completed
+  )
+  VALUES (new.id, new.email, 0, '{}', FALSE);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -229,6 +263,28 @@ CREATE POLICY "Users can view their own model evaluations"
   ON model_evaluations FOR SELECT
   USING (auth.uid() = user_id);
 
+-- Create model_comparisons table
+CREATE TABLE IF NOT EXISTS model_comparisons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  model_a TEXT NOT NULL,
+  model_b TEXT NOT NULL,
+  winner TEXT NOT NULL,
+  prompt_id UUID REFERENCES live_generations(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on model_comparisons
+ALTER TABLE model_comparisons ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert their own model comparisons"
+  ON model_comparisons FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own model comparisons"
+  ON model_comparisons FOR SELECT
+  USING (auth.uid() = user_id);
+
 -- Create model_writing_rationales table
 CREATE TABLE IF NOT EXISTS model_writing_rationales (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -252,17 +308,26 @@ CREATE POLICY "Users can insert their own model writing rationale"
 CREATE POLICY "Users can view their own model writing rationales"
   ON model_writing_rationales FOR SELECT
   USING (auth.uid() = user_id);
--- Migration: add indexes for performance
-CREATE INDEX IF NOT EXISTS idx_user_feedback_user_id ON user_feedback(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_feedback_prompt_id ON user_feedback(prompt_id);
-CREATE INDEX IF NOT EXISTS idx_rationales_prompt_id ON rationales(prompt_id);
-CREATE INDEX IF NOT EXISTS idx_rationales_user_id ON rationales(user_id);
-CREATE INDEX IF NOT EXISTS idx_hme_user_id ON human_model_evaluations(user_id);
-CREATE INDEX IF NOT EXISTS idx_hme_prompt_id ON human_model_evaluations(prompt_id);
-CREATE INDEX IF NOT EXISTS idx_model_eval_user_id ON model_evaluations(user_id);
-CREATE INDEX IF NOT EXISTS idx_model_eval_prompt_id ON model_evaluations(prompt_id);
-CREATE INDEX IF NOT EXISTS idx_model_eval_model_name ON model_evaluations(model_name);
-CREATE INDEX IF NOT EXISTS idx_model_writing_rat_user_id ON model_writing_rationales(user_id);
-CREATE INDEX IF NOT EXISTS idx_model_writing_rat_prompt_id ON model_writing_rationales(prompt_id);
-CREATE INDEX IF NOT EXISTS idx_dataset_downloads_user_id ON dataset_downloads(user_id);
-CREATE INDEX IF NOT EXISTS idx_writingprompts_created_at ON "writingprompts-pairwise-test"(created_at);
+
+-- Create content_reports table
+CREATE TABLE IF NOT EXISTS content_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  content_type TEXT NOT NULL,
+  content_id UUID NOT NULL,
+  reason TEXT,
+  resolved BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on content_reports
+ALTER TABLE content_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert their own content reports"
+  ON content_reports FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own content reports"
+  ON content_reports FOR SELECT
+  USING (auth.uid() = user_id);
+

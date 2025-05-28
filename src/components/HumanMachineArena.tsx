@@ -2,9 +2,15 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
+import { useUser } from "@/contexts/UserContext";
+import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/contexts/ToastContext";
 
+import { ReportContentButton } from "./ReportContentButton";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,6 +29,7 @@ export function HumanMachineArena() {
   const [selectedId, setSelectedId] = useState<string | "random">("random");
   const [model, setModel] = useState<string>(MODELS[0]);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null);
   const [texts, setTexts] = useState<{ left: string; right: string }>({
     left: "",
@@ -33,31 +40,62 @@ export function HumanMachineArena() {
     right: "ai",
   });
   const [result, setResult] = useState<boolean | null>(null);
+  const addToast = useToast();
+
+  const { user, isLoading } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const loadPrompts = async () => {
-      const { data } = await supabase
+      const { data: flagged } = await supabase
+        .from("content_reports")
+        .select("content_id")
+        .eq("content_type", "prompt")
+        .eq("resolved", false);
+      const excluded = (flagged || []).map((r) => r.content_id);
+      let query = supabase
         .from("writingprompts-pairwise-test")
         .select("id,prompt,chosen")
         .limit(50);
+      if (excluded.length > 0) {
+        query = query.not("id", "in", `(${excluded.join(",")})`);
+      }
+      const { data } = await query;
       setPrompts(data || []);
     };
     loadPrompts();
   }, []);
 
+  if (!user && !isLoading) {
+    return (
+      <div className="text-center py-10">
+        <p className="mb-4">You must be logged in to evaluate.</p>
+        <Button onClick={() => router.push(`/login?redirect=${encodeURIComponent(pathname)}`)}>Log in</Button>
+      </div>
+    );
+  }
+
   const fetchSample = async () => {
     setLoading(true);
+    setProgress(20);
     setResult(null);
     let row: PromptRow | null = null;
     if (selectedId === "random") {
-      const { count } = await supabase
-        .from("writingprompts-pairwise-test")
-        .select("id", { count: "exact", head: true });
-      const offset = Math.floor(Math.random() * (count || 1));
-      const { data } = await supabase
+      const { data: flagged } = await supabase
+        .from("content_reports")
+        .select("content_id")
+        .eq("content_type", "prompt")
+        .eq("resolved", false);
+      const excluded = (flagged || []).map((r) => r.content_id);
+      let query = supabase
         .from("writingprompts-pairwise-test")
         .select("id,prompt,chosen")
-        .range(offset, offset);
+        .limit(1);
+      if (excluded.length > 0) {
+        query = query.not("id", "in", `(${excluded.join(",")})`);
+      }
+      const { data } = await query.order("id", { ascending: Math.random() > 0.5 });
       if (data && data.length > 0) row = data[0];
     } else {
       const { data } = await supabase
@@ -72,15 +110,18 @@ export function HumanMachineArena() {
       return;
     }
     setCurrentPromptId(row.id);
+    setProgress(60);
     const aiRes = await fetch("/api/generate-openai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: row.prompt, model }),
     });
     const { text } = await aiRes.json();
+    setProgress(80);
     const isHumanLeft = Math.random() < 0.5;
     setTexts({ left: isHumanLeft ? row.chosen : text, right: isHumanLeft ? text : row.chosen });
     setMapping({ left: isHumanLeft ? "human" : "ai", right: isHumanLeft ? "ai" : "human" });
+    setProgress(100);
     setLoading(false);
   };
 
@@ -99,8 +140,10 @@ export function HumanMachineArena() {
             guessCorrect: isCorrect,
           }),
         });
+        addToast("Evaluation recorded", "success");
       } catch (err) {
         console.error("Failed to log evaluation", err);
+        addToast("Failed to log evaluation", "error");
       }
     }
     if (isCorrect && typeof window !== "undefined") {
@@ -110,6 +153,7 @@ export function HumanMachineArena() {
 
   return (
     <div className="flex flex-col gap-4 items-center">
+      {loading && <Progress value={progress} className="w-full" />}
       <div className="flex flex-wrap gap-2">
         <select
           value={selectedId}
@@ -131,7 +175,7 @@ export function HumanMachineArena() {
           ))}
         </select>
         <Button onClick={fetchSample} disabled={loading}>
-          {loading ? "Loading..." : "Generate"}
+          {loading ? <Skeleton className="h-5 w-20" /> : "Generate"}
         </Button>
       </div>
       {texts.left && (
@@ -148,6 +192,11 @@ export function HumanMachineArena() {
           >
             <p className="whitespace-pre-wrap text-sm leading-relaxed">{texts.right}</p>
           </Card>
+        </div>
+      )}
+      {currentPromptId && (
+        <div className="mt-2">
+          <ReportContentButton contentId={currentPromptId} contentType="prompt" />
         </div>
       )}
       {result !== null && (

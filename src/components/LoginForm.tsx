@@ -4,18 +4,20 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@/contexts/UserContext";
-import { CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 
 interface LoginFormProps {
   onClose?: () => void;
+  redirectPath?: string;
 }
 
-export function LoginForm({ onClose }: LoginFormProps) {
+export function LoginForm({ onClose, redirectPath }: LoginFormProps) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const { signIn } = useUser();
+  const { signInWithPassword } = useUser();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,12 +25,11 @@ export function LoginForm({ onClose }: LoginFormProps) {
     setError(null);
 
     try {
-      const { error } = await signIn(email);
-
+      const { error } = await signInWithPassword(email, password, remember);
       if (error) {
         setError(error.message);
-      } else {
-        setSuccess(true);
+      } else if (onClose) {
+        onClose();
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -39,38 +40,54 @@ export function LoginForm({ onClose }: LoginFormProps) {
   };
 
   return (
-    <div className="p-4">
-      {success ? (
-        <div className="flex flex-col items-center justify-center space-y-4 text-center">
-          <CheckCircle2 className="h-12 w-12 text-green-500" />
-          <p className="text-sm">Magic link was sent, check your email.</p>
-          <Button className="w-full" onClick={onClose}>
-            Ok
-          </Button>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <div className="text-sm font-medium">Email</div>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-background border-t-transparent" />
-            ) : (
-              "Send magic link"
-            )}
-          </Button>
-        </form>
-      )}
-    </div>
+    <form onSubmit={handleSubmit} className="space-y-4 p-4">
+      <div className="space-y-2">
+        <div className="text-sm font-medium">Email</div>
+        <Input
+          id="email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <div className="text-sm font-medium">Password</div>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+          />
+          Remember me
+        </label>
+        <Link href="/auth/reset" className="text-sm underline">
+          Forgot password?
+        </Link>
+      </div>
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-background border-t-transparent" />
+        ) : (
+          "Sign in"
+        )}
+      </Button>
+      <p className="text-center text-sm">
+        <Link href="/auth/signup" className="underline">
+          Create account
+        </Link>
+      </p>
+    </form>
   );
 }

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
 import { supabase } from '@/lib/supabase';
+import { fetchWithRetry } from '@/lib/api';
 
 export default function ResourcesPage() {
   const { user } = useUser();
@@ -27,7 +28,7 @@ export default function ResourcesPage() {
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/download-dataset');
+      const res = await fetchWithRetry('/api/download-dataset');
       if (res.ok) {
         const { url } = await res.json();
         window.location.href = url;

@@ -3,68 +3,67 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-interface CacheEntry {
-  data: LeaderboardResult[];
-  expires: number;
-}
-
-export interface LeaderboardResult {
-  model: string;
-  winRate: number;
-}
-
-export const leaderboardCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 60_000; // 1 minute
-
-
-export async function handleModelLeaderboard(
-  supabase: SupabaseClient,
-  page = 1,
-  pageSize = 50,
-) {
-  const key = `${page}-${pageSize}`;
-  const cached = leaderboardCache.get(key);
-  if (cached && cached.expires > Date.now()) {
-    return NextResponse.json(cached.data);
-  }
-
-  const { data: modelEval, error: modelErr } = await supabase
+export async function handleModelLeaderboard(supabase: SupabaseClient) {
+  const { data: modelEvalData, error: modelErr } = await supabase
     .from('model_evaluations')
     .select('model_name,is_correct');
+
   if (modelErr) {
+    console.error('Error fetching model_evaluations:', modelErr);
     return NextResponse.json({ error: modelErr.message }, { status: 500 });
   }
-  const { data: humanEval, error: humanErr } = await supabase
+
+  const { data: humanEvalData, error: humanErr } = await supabase
     .from('human_model_evaluations')
     .select('model_name,is_correct');
+
   if (humanErr) {
+    console.error('Error fetching human_model_evaluations:', humanErr);
     return NextResponse.json({ error: humanErr.message }, { status: 500 });
   }
-  const stats: Record<string, { wins: number; total: number }> = {};
-  for (const row of [...(modelEval || []), ...(humanEval || [])]) {
+
+  const stats: Record<
+    string,
+    { modelWins: number; totalEvaluations: number; humanDeceptions: number }
+  > = {};
+
+  // Process model_evaluations
+  for (const row of modelEvalData || []) {
     const model = row.model_name;
-    if (!stats[model]) stats[model] = { wins: 0, total: 0 };
-    if (row.is_correct) stats[model].wins++;
-    stats[model].total++;
+    if (!stats[model]) {
+      stats[model] = { modelWins: 0, totalEvaluations: 0, humanDeceptions: 0 };
+    }
+    if (row.is_correct) {
+      stats[model].modelWins++;
+    }
+    stats[model].totalEvaluations++;
   }
+
+  // Process human_model_evaluations
+  for (const row of humanEvalData || []) {
+    const model = row.model_name;
+    if (!stats[model]) {
+      // This case should ideally not happen if a model has human evals but no model evals
+      // but we initialize it to be safe.
+      stats[model] = { modelWins: 0, totalEvaluations: 0, humanDeceptions: 0 };
+    }
+    if (!row.is_correct) { // A human deception means the human guess was incorrect
+      stats[model].humanDeceptions++;
+    }
+  }
+
   const result = Object.entries(stats).map(([model, s]) => ({
     model,
-    winRate: s.total ? s.wins / s.total : 0,
+    winRate: s.totalEvaluations ? s.modelWins / s.totalEvaluations : 0,
+    humanDeceptions: s.humanDeceptions,
+    totalEvaluations: s.totalEvaluations,
   }));
+
   result.sort((a, b) => b.winRate - a.winRate);
-
-  const start = (page - 1) * pageSize;
-  const paginated = result.slice(start, start + pageSize);
-
-  leaderboardCache.set(key, {
-    data: paginated,
-    expires: Date.now() + CACHE_TTL_MS,
-  });
-
-  return NextResponse.json(paginated);
+  return NextResponse.json(result);
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   const cookieStorePromise = cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -87,11 +86,7 @@ export async function GET(req: Request) {
       },
     }
   );
-  const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
-
-  return handleModelLeaderboard(supabase, page, pageSize);
+  return handleModelLeaderboard(supabase);
 }
 
 export interface LeaderboardEntry {

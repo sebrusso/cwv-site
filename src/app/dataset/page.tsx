@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
+import { fetchWithRetry } from '@/lib/api';
 
 export default function DatasetPage() {
   const { user } = useUser();
@@ -14,7 +15,7 @@ export default function DatasetPage() {
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/download-dataset');
+      const res = await fetchWithRetry('/api/download-dataset');
       if (res.ok) {
         const { url } = await res.json();
         window.location.href = url;
