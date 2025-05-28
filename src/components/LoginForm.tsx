@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/contexts/ToastContext";
 import { useUser } from "@/contexts/UserContext";
 import { CheckCircle2 } from "lucide-react";
 
@@ -16,6 +18,7 @@ export function LoginForm({ onClose }: LoginFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const { signIn } = useUser();
+  const addToast = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,12 +30,15 @@ export function LoginForm({ onClose }: LoginFormProps) {
 
       if (error) {
         setError(error.message);
+        addToast(error.message, "error");
       } else {
         setSuccess(true);
+        addToast("Magic link sent", "success");
       }
     } catch (err) {
       setError("An unexpected error occurred");
       console.error(err);
+      addToast("An unexpected error occurred", "error");
     } finally {
       setIsLoading(false);
     }
@@ -63,11 +69,7 @@ export function LoginForm({ onClose }: LoginFormProps) {
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-background border-t-transparent" />
-            ) : (
-              "Send magic link"
-            )}
+            {isLoading ? <Skeleton className="h-5 w-full" /> : "Send magic link"}
           </Button>
         </form>
       )}

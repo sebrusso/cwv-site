@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 
@@ -51,6 +53,7 @@ export function HumanEvaluationArena() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [pendingScoreUpdate, setPendingScoreUpdate] = useState<boolean | null>(
@@ -115,6 +118,7 @@ export function HumanEvaluationArena() {
   const fetchRandomPrompt = async () => {
     setError(null);
     setIsLoading(true);
+    setProgress(10);
 
     try {
       // Get a random prompt without filtering for previously viewed ones
@@ -141,6 +145,7 @@ export function HumanEvaluationArena() {
         return;
       }
 
+      setProgress(60);
       const promptData = data[0];
       setPrompt(promptData);
       setSelectedText(null);
@@ -156,6 +161,7 @@ export function HumanEvaluationArena() {
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
       if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
+      setProgress(100);
 
       // If user is logged in, still track this prompt as viewed for analytics
       if (user && promptData.id) {
@@ -166,6 +172,7 @@ export function HumanEvaluationArena() {
         error instanceof Error ? error.message : "Unknown error occurred";
       setError(`Failed to fetch prompt: ${errorMessage}`);
       console.error("Error fetching prompt:", error);
+      setProgress(100);
     } finally {
       setIsLoading(false);
     }
@@ -315,6 +322,9 @@ export function HumanEvaluationArena() {
 
   return (
     <div className="flex flex-col items-center gap-8">
+      {(isLoading || isSubmittingRationale) && (
+        <Progress value={progress} className="w-full" />
+      )}
       {showHighlightTip && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="w-full max-w-sm p-6">
@@ -403,10 +413,7 @@ export function HumanEvaluationArena() {
                   disabled={isSubmittingRationale || !user}
                 >
                   {isSubmittingRationale ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                      <span>Submitting...</span>
-                    </div>
+                    <Skeleton className="h-4 w-20" />
                   ) : !user ? (
                     "Log in to Submit"
                   ) : (
@@ -463,8 +470,10 @@ export function HumanEvaluationArena() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-24 w-full" />
+            <Progress value={progress} />
           </div>
         ) : prompt ? (
           <Card className="w-full p-4">

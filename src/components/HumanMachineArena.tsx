@@ -4,6 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/contexts/ToastContext";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,6 +26,7 @@ export function HumanMachineArena() {
   const [selectedId, setSelectedId] = useState<string | "random">("random");
   const [model, setModel] = useState<string>(MODELS[0]);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null);
   const [texts, setTexts] = useState<{ left: string; right: string }>({
     left: "",
@@ -33,6 +37,7 @@ export function HumanMachineArena() {
     right: "ai",
   });
   const [result, setResult] = useState<boolean | null>(null);
+  const addToast = useToast();
 
   useEffect(() => {
     const loadPrompts = async () => {
@@ -47,6 +52,7 @@ export function HumanMachineArena() {
 
   const fetchSample = async () => {
     setLoading(true);
+    setProgress(20);
     setResult(null);
     let row: PromptRow | null = null;
     if (selectedId === "random") {
@@ -72,15 +78,18 @@ export function HumanMachineArena() {
       return;
     }
     setCurrentPromptId(row.id);
+    setProgress(60);
     const aiRes = await fetch("/api/generate-openai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: row.prompt, model }),
     });
     const { text } = await aiRes.json();
+    setProgress(80);
     const isHumanLeft = Math.random() < 0.5;
     setTexts({ left: isHumanLeft ? row.chosen : text, right: isHumanLeft ? text : row.chosen });
     setMapping({ left: isHumanLeft ? "human" : "ai", right: isHumanLeft ? "ai" : "human" });
+    setProgress(100);
     setLoading(false);
   };
 
@@ -99,8 +108,10 @@ export function HumanMachineArena() {
             guessCorrect: isCorrect,
           }),
         });
+        addToast("Evaluation recorded", "success");
       } catch (err) {
         console.error("Failed to log evaluation", err);
+        addToast("Failed to log evaluation", "error");
       }
     }
     if (isCorrect && typeof window !== "undefined") {
@@ -110,6 +121,7 @@ export function HumanMachineArena() {
 
   return (
     <div className="flex flex-col gap-4 items-center">
+      {loading && <Progress value={progress} className="w-full" />}
       <div className="flex flex-wrap gap-2">
         <select
           value={selectedId}
@@ -131,7 +143,7 @@ export function HumanMachineArena() {
           ))}
         </select>
         <Button onClick={fetchSample} disabled={loading}>
-          {loading ? "Loading..." : "Generate"}
+          {loading ? <Skeleton className="h-5 w-20" /> : "Generate"}
         </Button>
       </div>
       {texts.left && (

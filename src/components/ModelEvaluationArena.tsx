@@ -5,7 +5,10 @@ import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { useUser } from "@/contexts/UserContext";
+import { useToast } from "@/contexts/ToastContext";
 
 // Initialize Supabase client (used for client-side reads if any, and by old logic if not fully removed)
 const supabase = createClient(
@@ -64,15 +67,17 @@ export function ModelEvaluationArena() {
   const [currentEvaluationId, setCurrentEvaluationId] = useState<string | null>(null); // For storing model_evaluations.id if needed for rationale
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [showResultFeedback, setShowResultFeedback] = useState(false); // To show some feedback after selection
 
-
+  
   const leftResponseRef = useRef<HTMLDivElement>(null);
   const rightResponseRef = useRef<HTMLDivElement>(null);
 
   const { user } = useUser();
+  const addToast = useToast();
 
   const fetchNewLiveComparison = async () => {
     console.log("fetchNewLiveComparison called. User object:", user);
@@ -80,6 +85,7 @@ export function ModelEvaluationArena() {
 
     setError(null);
     setIsLoading(true);
+    setProgress(10);
     setCurrentDisplayData(null);
     setResponses({ left: "", right: "" });
     setSelectedResponseFullText(null);
@@ -102,6 +108,7 @@ export function ModelEvaluationArena() {
         setIsLoading(false);
         return;
       }
+      setProgress(40);
       const randomOffset = Math.floor(Math.random() * count);
       const { data: randomPromptEntry, error: randomPromptError } = await supabase
         .from("writingprompts-pairwise-test")
@@ -114,6 +121,7 @@ export function ModelEvaluationArena() {
       const sourcePromptDbId = randomPromptEntry.id;
 
       // 2. Call the new API route to generate live comparison
+      setProgress(60);
       const apiResponse = await fetch("/api/generate-live-comparison", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,6 +135,7 @@ export function ModelEvaluationArena() {
 
       const liveDataFromApi = await apiResponse.json();
       
+      setProgress(80);
       setCurrentDisplayData({
         source_prompt_db_id: liveDataFromApi.prompt_db_id,
         source_prompt_text: liveDataFromApi.prompt_text,
@@ -151,6 +160,7 @@ export function ModelEvaluationArena() {
       if (leftResponseRef.current) leftResponseRef.current.scrollTop = 0;
       if (rightResponseRef.current) rightResponseRef.current.scrollTop = 0;
 
+      setProgress(100);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
       setError(`Failed to fetch new comparison: ${errorMessage}`);
@@ -180,6 +190,7 @@ export function ModelEvaluationArena() {
 
     setSelectedResponseFullText(selectedActualText);
     setShowResultFeedback(true); // Show general feedback
+    setProgress(20);
 
     // Fire confetti regardless of "correctness" as it's a preference task
     if (typeof window !== "undefined") {
@@ -213,10 +224,14 @@ export function ModelEvaluationArena() {
           console.log("Live evaluation saved, ID:", savedEval.id);
           setCurrentEvaluationId(savedEval.id);
           setShowRationale(true); // Prompt for rationale after successful save
+          addToast("Evaluation saved", "success");
+          setProgress(100);
         }
       } catch (err) {
         console.error("Exception saving live evaluation:", err);
         setError("An unexpected error occurred while saving your evaluation.");
+        addToast("Failed to save evaluation", "error");
+        setProgress(100);
       }
     } else if (!user) {
       setShowRationale(true); // Still show rationale input for non-logged-in users, but it won't be saved with user_id
@@ -243,24 +258,31 @@ export function ModelEvaluationArena() {
         return;
     }
     setIsSubmittingRationale(true);
+    setProgress(30);
     setRationaleError(null);
     try {
       const rationaleData: ModelRationale = {
         evaluation_id: currentEvaluationId,
         rationale: rationale,
       };
-      const { error } = await supabase.from("model_writing_rationales").insert(rationaleData);
+      const { error } = await supabase
+        .from("model_writing_rationales")
+        .insert(rationaleData);
       if (error) throw error;
       
       console.log("Rationale saved for evaluation ID:", currentEvaluationId);
       setShowRationale(false);
       setRationale("");
+      addToast("Rationale saved", "success");
+      setProgress(100);
       // Optionally: Show a "Rationale saved!" message before loading next prompt
       // Or directly load next: handleNextPrompt();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       setRationaleError(`Failed to save rationale: ${msg}`);
       console.error("Error saving rationale:", err);
+      addToast("Failed to save rationale", "error");
+      setProgress(100);
     } finally {
       setIsSubmittingRationale(false);
     }
@@ -275,7 +297,13 @@ export function ModelEvaluationArena() {
 
   // --- UI Rendering ---
   if (isLoading && !currentDisplayData) {
-    return <div className="text-center p-10">Loading new evaluation...</div>;
+    return (
+      <div className="w-full space-y-4">
+        <Skeleton className="h-6 w-1/2" />
+        <Skeleton className="h-24 w-full" />
+        <Progress value={progress} className="mt-4" />
+      </div>
+    );
   }
 
   if (error) {
@@ -302,6 +330,9 @@ export function ModelEvaluationArena() {
 
   return (
     <div className="flex flex-col gap-6 items-center w-full">
+      {(isLoading || isSubmittingRationale) && (
+        <Progress value={progress} className="w-full" />
+      )}
       {currentDisplayData && (
         <div className="w-full p-4 border rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800">
           <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Prompt:</h3>
