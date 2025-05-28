@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { postJsonWithRetry } from "@/lib/api";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,10 +73,9 @@ export function HumanMachineArena() {
       return;
     }
     setCurrentPromptId(row.id);
-    const aiRes = await fetch("/api/generate-openai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: row.prompt, model }),
+    const aiRes = await postJsonWithRetry("/api/generate-openai", {
+      prompt: row.prompt,
+      model,
     });
     const { text } = await aiRes.json();
     const isHumanLeft = Math.random() < 0.5;
@@ -90,14 +90,10 @@ export function HumanMachineArena() {
 
     if (currentPromptId) {
       try {
-        await fetch("/api/human-model-evaluations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            promptId: currentPromptId,
-            modelName: model,
-            guessCorrect: isCorrect,
-          }),
+        await postJsonWithRetry("/api/human-model-evaluations", {
+          promptId: currentPromptId,
+          modelName: model,
+          guessCorrect: isCorrect,
         });
       } catch (err) {
         console.error("Failed to log evaluation", err);

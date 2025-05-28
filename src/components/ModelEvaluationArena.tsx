@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
+import { postJsonWithRetry } from "@/lib/api";
 
 // Initialize Supabase client (used for client-side reads if any, and by old logic if not fully removed)
 const supabase = createClient(
@@ -114,11 +115,10 @@ export function ModelEvaluationArena() {
       const sourcePromptDbId = randomPromptEntry.id;
 
       // 2. Call the new API route to generate live comparison
-      const apiResponse = await fetch("/api/generate-live-comparison", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt_db_id: sourcePromptDbId }),
-      });
+      const apiResponse = await postJsonWithRetry(
+        "/api/generate-live-comparison",
+        { prompt_db_id: sourcePromptDbId }
+      );
 
       if (!apiResponse.ok) {
         const errData = await apiResponse.json();

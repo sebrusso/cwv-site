@@ -4,8 +4,7 @@ import { UserProfileButton } from "@/components/UserProfileButton";
 import { UserScoreDisplay } from "@/components/UserScoreDisplay";
 import { HelpButton } from "@/components/HelpButton";
 import { Info } from "lucide-react";
-import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+
 
 // Define a type for our data
 // type VisualizationData = {

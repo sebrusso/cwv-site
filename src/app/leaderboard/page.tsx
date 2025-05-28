@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { fetchWithRetry } from '@/lib/api';
 
 interface Entry {
   model: string;
@@ -20,7 +21,7 @@ export default function LeaderboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/model-leaderboard');
+        const res = await fetchWithRetry('/api/model-leaderboard');
         if (res.ok) {
           const data = await res.json();
           setEntries(data);

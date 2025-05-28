@@ -252,3 +252,22 @@ CREATE POLICY "Users can insert their own model writing rationale"
 CREATE POLICY "Users can view their own model writing rationales"
   ON model_writing_rationales FOR SELECT
   USING (auth.uid() = user_id);
+
+-- Create error_logs table for capturing client and server errors
+CREATE TABLE IF NOT EXISTS error_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  source TEXT NOT NULL, -- 'client' or 'server'
+  message TEXT NOT NULL,
+  stack TEXT,
+  context JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on error_logs
+ALTER TABLE error_logs ENABLE ROW LEVEL SECURITY;
+
+-- Allow anyone to insert error logs (user_id may be null)
+CREATE POLICY "Allow inserting error logs"
+  ON error_logs FOR INSERT
+  WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
