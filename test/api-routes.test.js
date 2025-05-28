@@ -75,7 +75,12 @@ test('human-model-evaluations inserts row', async () => {
     { prompt_id: 'p1', is_correct: false }
   );
   assert.equal(res.status, 200);
-  assert.deepEqual(inserted, { user_id: 'u1', prompt_id: 'p1', is_correct: false });
+  assert.deepEqual(inserted, {
+    user_id: 'u1',
+    prompt_id: 'p1',
+    model_name: '',
+    guess_correct: false,
+  });
 });
 
 test('model-leaderboard aggregates results', async () => {
@@ -98,4 +103,43 @@ test('model-leaderboard aggregates results', async () => {
   assert.deepEqual(body.map((r) => r.model), ['A', 'B']);
   assert.ok(Math.abs(body[0].winRate - 2 / 3) < 1e-6);
   assert.ok(Math.abs(body[1].winRate - 1 / 3) < 1e-6);
+});
+
+test('generate-live-comparison cache serves prefetched data', async () => {
+  const { handleGenerateLiveComparison, generationCache } = loadRoute(
+    'src/app/api/generate-live-comparison/route.ts'
+  );
+
+  let callCount = 0;
+  const supabase = {
+    from: (table) => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({ data: { id: 'p1', prompt: 'test prompt' }, error: null }),
+        }),
+      }),
+      insert: () => ({
+        select: () => ({ single: async () => ({ data: { id: 'g1' }, error: null }) }),
+      }),
+    }),
+  };
+  const openai = {
+    chat: {
+      completions: {
+        create: async () => {
+          callCount++;
+          return { choices: [{ message: { content: 'text' } }] };
+        },
+      },
+    },
+  };
+
+  await handleGenerateLiveComparison(supabase, openai, { prompt_db_id: 'p1', prefetch: true });
+  assert.equal(callCount, 2);
+
+  const res = await handleGenerateLiveComparison(supabase, openai, { prompt_db_id: 'p1' });
+  assert.equal(callCount, 2);
+  const body = await res.json();
+  assert.equal(body.prompt_db_id, 'p1');
+  assert.ok(!generationCache.has('p1'));
 });

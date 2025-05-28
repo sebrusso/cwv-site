@@ -30,7 +30,10 @@ test('model leaderboard returns an array of entries', async () => {
   const { handleModelLeaderboard } = loadRoute('src/app/api/model-leaderboard/route.ts');
   const supabase = supabaseSelectMock({
     model_evaluations: [{ model_name: 'A', is_correct: true }],
-    human_model_evaluations: [{ model_name: 'A', is_correct: false }],
+    human_model_evaluations: [
+      { model_name: 'A', is_correct: false },
+      { model_name: 'B', is_correct: false }
+    ],
   });
   const res = await handleModelLeaderboard(supabase);
   assert.equal(res.status, 200);

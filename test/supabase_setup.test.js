@@ -5,7 +5,7 @@ import { test } from 'node:test';
 const sql = fs.readFileSync('supabase_setup.sql', 'utf8');
 
 test('SQL setup includes human_model_evaluations table', () => {
-  assert.ok(sql.includes('human_model_evaluations'));
+  assert.ok(sql.includes('human_model_evaluations'), 'human_model_evaluations table missing');
 });
 
 test('dataset_downloads table exists with policies', () => {
