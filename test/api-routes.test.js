@@ -99,3 +99,21 @@ test('model-leaderboard aggregates results', async () => {
   assert.ok(Math.abs(body[0].winRate - 2 / 3) < 1e-6);
   assert.ok(Math.abs(body[1].winRate - 1 / 3) < 1e-6);
 });
+
+test('user-dashboard aggregates user stats', async () => {
+  const { handleUserDashboard } = loadRoute('src/app/api/user-dashboard/route.ts');
+  const supabase = supabaseSelectMock({
+    human_model_evaluations: [
+      { user_id: 'u1', is_correct: true, created_at: '2024-01-01T00:00:00Z' },
+      { user_id: 'u2', is_correct: false, created_at: '2024-01-01T00:00:00Z' }
+    ],
+    model_evaluations: [
+      { user_id: 'u1', is_correct: false, created_at: '2024-01-02T00:00:00Z' }
+    ]
+  });
+  const res = await handleUserDashboard(supabase, 'u1');
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.total.correct, 1);
+  assert.equal(body.total.total, 2);
+});

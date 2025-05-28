@@ -12,6 +12,7 @@ export function NavigationBar() {
       <Link href="/" className={linkClass("/")}>Arena</Link>
       <Link href="/resources" className={linkClass("/resources")}>Resources</Link>
       <Link href="/leaderboard" className={linkClass("/leaderboard")}>Leaderboard</Link>
+      <Link href="/dashboard" className={linkClass("/dashboard")}>Dashboard</Link>
     </nav>
   );
 }
