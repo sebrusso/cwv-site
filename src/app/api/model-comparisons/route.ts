@@ -3,30 +3,44 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function handleHumanModelEvaluation(
+export interface ComparisonPayload {
+  modelA: string;
+  modelB: string;
+  winner: string;
+  promptId: string;
+}
+
+export async function handleModelComparison(
   supabase: SupabaseClient,
-  { prompt_id, is_correct, model_name = '' }: { prompt_id: string; is_correct: boolean; model_name?: string },
+  payload: ComparisonPayload
 ) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { error } = await supabase.from('human_model_evaluations').insert({
+  const { modelA, modelB, winner, promptId } = payload;
+  if (!modelA || !modelB || !winner || !promptId) {
+    return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+  }
+  if (winner !== modelA && winner !== modelB) {
+    return NextResponse.json({ error: 'Winner must be one of the compared models' }, { status: 400 });
+  }
+
+  const { error } = await supabase.from('model_comparisons').insert({
     user_id: session.user.id,
-    prompt_id,
-    model_name,
-    guess_correct: is_correct,
+    model_a: modelA,
+    model_b: modelB,
+    winner,
+    prompt_id: promptId,
   });
 
   if (error) {
-    console.error('Failed to save evaluation', error);
+    console.error('Failed to save model comparison', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
   return NextResponse.json({ success: true });
 }
 
@@ -53,36 +67,12 @@ export async function POST(req: Request) {
       },
     }
   );
-  try {
-    const { promptId, modelName = '', guessCorrect } = await req.json();
-    return handleHumanModelEvaluation(supabase, {
-      prompt_id: promptId,
-      model_name: modelName,
-      is_correct: guessCorrect,
-    });
-  } catch (err) {
-    console.error('Error in human-model-evaluations API:', err);
-    return NextResponse.json({ error: 'Failed to save evaluation' }, { status: 500 });
-  }
-}
 
-export async function handleHumanModelEvaluation(
-  supabase: SupabaseClient,
-  { prompt_id, is_correct }: { prompt_id: string; is_correct: boolean }
-) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const payload = await req.json();
+    return handleModelComparison(supabase, payload);
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
-  const { error } = await supabase.from('human_model_evaluations').insert({
-    user_id: session.user.id,
-    prompt_id,
-    is_correct,
-  });
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  return NextResponse.json({ success: true });
 }
