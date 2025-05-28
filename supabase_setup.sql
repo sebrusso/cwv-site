@@ -138,6 +138,19 @@ CREATE TABLE IF NOT EXISTS dataset_downloads (
 -- Enable RLS on dataset_downloads
 ALTER TABLE dataset_downloads ENABLE ROW LEVEL SECURITY;
 
+-- Create evaluation_quality_metrics table
+CREATE TABLE IF NOT EXISTS evaluation_quality_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  evaluation_time_ms INTEGER,
+  prompt_similarity DOUBLE PRECISION,
+  confidence_score DOUBLE PRECISION,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS on evaluation_quality_metrics
+ALTER TABLE evaluation_quality_metrics ENABLE ROW LEVEL SECURITY;
+
 -- Create RLS policies
 
 -- Profiles policies
@@ -186,6 +199,14 @@ CREATE POLICY "Dataset downloads are viewable by everyone"
 CREATE POLICY "Users can insert their own dataset downloads"
   ON dataset_downloads FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+-- Evaluation quality metrics policies
+CREATE POLICY "Users can insert their own evaluation quality metrics"
+  ON evaluation_quality_metrics FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can view their own evaluation quality metrics"
+  ON evaluation_quality_metrics FOR SELECT
+  USING (auth.uid() = user_id);
 
 -- Create a function to handle new user signups
 CREATE OR REPLACE FUNCTION public.handle_new_user()

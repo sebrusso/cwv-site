@@ -14,6 +14,14 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+function similarity(a: string, b: string) {
+  const setA = new Set(a.split(/\s+/));
+  const setB = new Set(b.split(/\s+/));
+  const intersection = Array.from(setA).filter((w) => setB.has(w)).length;
+  const union = new Set([...setA, ...setB]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
 // Updated interface for the data structure we'll manage in the state
 interface LiveEvaluationDisplayData {
   source_prompt_db_id: string; // UUID from the 'writingprompts-pairwise-test' table
@@ -70,6 +78,8 @@ export function ModelEvaluationArena() {
   const [showResultFeedback, setShowResultFeedback] = useState(false); // To show some feedback after selection
   const [isPrefetching, setIsPrefetching] = useState(false);
   const [prefetchedPromptId, setPrefetchedPromptId] = useState<string | null>(null);
+
+  const [evaluationStart, setEvaluationStart] = useState<number>(0);
 
 
   const leftResponseRef = useRef<HTMLDivElement>(null);
@@ -159,6 +169,8 @@ export function ModelEvaluationArena() {
         left: isResponseALeft ? "A" : "B",
         right: isResponseALeft ? "B" : "A",
       });
+
+      setEvaluationStart(Date.now());
 
       if (leftResponseRef.current) leftResponseRef.current.scrollTop = 0;
       if (rightResponseRef.current) rightResponseRef.current.scrollTop = 0;
@@ -259,6 +271,23 @@ export function ModelEvaluationArena() {
       setShowRationale(true); // Still show rationale input for non-logged-in users, but it won't be saved with user_id
     }
     setPendingSelectionSide(null); // Clear pending selection
+
+    const evalTime = Date.now() - evaluationStart;
+    const sim = similarity(responses.left, responses.right);
+    const confidence = Math.max(0, 1 - evalTime / 30000);
+    try {
+      await fetch('/api/evaluation-quality', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          evaluationTime: evalTime,
+          promptSimilarity: sim,
+          confidenceScore: confidence,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to record quality metrics', err);
+    }
   };
 
   const handleNextPrompt = () => {
