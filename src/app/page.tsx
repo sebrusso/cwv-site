@@ -4,6 +4,7 @@ import { UserProfileButton } from "@/components/UserProfileButton";
 import { UserScoreDisplay } from "@/components/UserScoreDisplay";
 import { HelpButton } from "@/components/HelpButton";
 import { Info } from "lucide-react";
+
 // Define a type for our data
 // type VisualizationData = {
 //   id: number;
