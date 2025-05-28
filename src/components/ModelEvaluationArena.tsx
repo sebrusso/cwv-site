@@ -67,6 +67,7 @@ export function ModelEvaluationArena() {
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [showResultFeedback, setShowResultFeedback] = useState(false); // To show some feedback after selection
+  const [showModelNames, setShowModelNames] = useState(false);
 
 
   const leftResponseRef = useRef<HTMLDivElement>(null);
@@ -88,6 +89,7 @@ export function ModelEvaluationArena() {
     setShowRationale(false);
     setRationale("");
     setShowResultFeedback(false);
+    setShowModelNames(false);
 
 
     try {
@@ -179,6 +181,7 @@ export function ModelEvaluationArena() {
     const selectedModelName = selectedOriginalModel === "A" ? currentDisplayData.model_A_name : currentDisplayData.model_B_name;
 
     setSelectedResponseFullText(selectedActualText);
+    setShowModelNames(true);
     setShowResultFeedback(true); // Show general feedback
 
     // Fire confetti regardless of "correctness" as it's a preference task
@@ -299,6 +302,18 @@ export function ModelEvaluationArena() {
   }
   
   const isSelectionMade = !!selectedResponseFullText;
+  const leftModelName = currentDisplayData
+    ? responseMapping.left === "A"
+      ? currentDisplayData.model_A_name
+      : currentDisplayData.model_B_name
+    : "";
+  const rightModelName = currentDisplayData
+    ? responseMapping.right === "A"
+      ? currentDisplayData.model_A_name
+      : currentDisplayData.model_B_name
+    : "";
+  const leftGenericLabel = `Text ${responseMapping.left}`;
+  const rightGenericLabel = `Text ${responseMapping.right}`;
 
   return (
     <div className="flex flex-col gap-6 items-center w-full">
@@ -318,6 +333,10 @@ export function ModelEvaluationArena() {
                         ${isSelectionMade ? "opacity-70 cursor-not-allowed" : "hover:border-indigo-500 dark:hover:border-indigo-400"}`}
             onClick={() => !isSelectionMade && handleSelection("left")}
           >
+            <div aria-live="polite" className="relative mb-2 text-sm font-semibold text-gray-600 dark:text-gray-300">
+              <span className={`transition-opacity duration-300 ${showModelNames ? 'opacity-0 absolute' : 'opacity-100 relative'}`}>{leftGenericLabel}</span>
+              <span className={`transition-opacity duration-300 ${showModelNames ? 'opacity-100 relative' : 'opacity-0 absolute'}`}>{leftModelName}</span>
+            </div>
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.left}</p>
           </Card>
           <Card
@@ -327,6 +346,10 @@ export function ModelEvaluationArena() {
                         ${isSelectionMade ? "opacity-70 cursor-not-allowed" : "hover:border-indigo-500 dark:hover:border-indigo-400"}`}
             onClick={() => !isSelectionMade && handleSelection("right")}
           >
+            <div aria-live="polite" className="relative mb-2 text-sm font-semibold text-gray-600 dark:text-gray-300">
+              <span className={`transition-opacity duration-300 ${showModelNames ? 'opacity-0 absolute' : 'opacity-100 relative'}`}>{rightGenericLabel}</span>
+              <span className={`transition-opacity duration-300 ${showModelNames ? 'opacity-100 relative' : 'opacity-0 absolute'}`}>{rightModelName}</span>
+            </div>
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.right}</p>
           </Card>
         </div>
