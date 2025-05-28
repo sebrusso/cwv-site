@@ -10,7 +10,7 @@ export interface ComparisonPayload {
   promptId: string;
 }
 
-export async function handleModelComparison(
+async function handleModelComparison(
   supabase: SupabaseClient,
   payload: ComparisonPayload
 ) {

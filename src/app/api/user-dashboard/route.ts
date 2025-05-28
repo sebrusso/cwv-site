@@ -20,7 +20,7 @@ interface DashboardData {
   ranking: { position: number; totalUsers: number };
 }
 
-export async function computeDashboardData(
+async function computeDashboardData(
   supabase: SupabaseClient,
   userId: string
 ): Promise<DashboardData> {
@@ -72,7 +72,7 @@ export async function computeDashboardData(
   return { daily, total, ranking: { position, totalUsers } };
 }
 
-export async function handleUserDashboard(
+async function handleUserDashboard(
   supabase: SupabaseClient,
   userId: string
 ) {

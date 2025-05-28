@@ -4,14 +4,14 @@ import { useUser } from "@/contexts/UserContext";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { config } from "@/config";
 
 export function OnboardingDebugPanel() {
   const { user, profile, isLoading } = useUser();
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
 
-  // Only show in development
-  if (process.env.NODE_ENV !== 'development') {
+  if (!config.debugMode) {
     return null;
   }
 
@@ -69,7 +69,10 @@ export function OnboardingDebugPanel() {
         
         <div>
           <strong>Should Redirect:</strong> {
-            (!isLoading && user && profile && !profile.demographics_completed && pathname === "/").toString()
+            (() => {
+              if (isLoading || !user || !profile) return false;
+              return !profile.demographics_completed && pathname === "/";
+            })().toString()
           }
         </div>
         

@@ -6,22 +6,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
-export async function logServerError(params: {
-  message: string;
-  stack?: string;
-  source?: string;
-  context?: unknown;
-  user_id?: string | null;
-}) {
-  await supabaseAdmin.from('error_logs').insert({
-    user_id: params.user_id,
-    source: params.source ?? 'server',
-    message: params.message,
-    stack: params.stack,
-    context: params.context ?? null,
-  });
-}
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();

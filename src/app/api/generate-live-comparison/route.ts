@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { truncateToSentence } from '../../../lib/utils';
+import { getSystemInstruction } from '../../../lib/systemInstructions';
+import { generateText } from '../../../lib/models/aiService';
+import { AVAILABLE_MODELS } from '../../../lib/models/modelConfig';
 
 // Initialize Supabase client with the SERVICE ROLE KEY for admin-level operations
 // Ensure SUPABASE_URL and SUPABASE_SERVICE_KEY are in your .env.local and deployment environment
@@ -9,22 +12,9 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
-// Helper to lazily create the OpenAI client
-async function createOpenAI() {
-  const mod = await import('openai');
-  const OpenAI = (mod as any).default || mod;
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
+// Models are defined in modelConfig.ts and re-exported here for convenience
 
-// Available models for selection
-export const AVAILABLE_MODELS = [
-  'gpt-4o',
-  'gpt-4o-mini', 
-  'gpt-4-turbo',
-  'gpt-3.5-turbo'
-];
-
-export interface GenerationData {
+interface GenerationData {
   live_generation_id: string;
   prompt_text: string;
   prompt_db_id: string;
@@ -34,13 +24,10 @@ export interface GenerationData {
   model_B_name: string;
 }
 
-export const generationCache = new Map<string, GenerationData>();
+const generationCache = new Map<string, GenerationData>();
 
-export async function handleGenerateLiveComparison(
+async function handleGenerateLiveComparison(
   supabase: SupabaseClient,
-  // OpenAI type definitions are not available in this environment
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  openaiClient: any,
   {
     prompt_db_id,
     prompt_text,
@@ -106,41 +93,32 @@ export async function handleGenerateLiveComparison(
 
   const sourcePromptText = promptData.prompt;
   // 2. Generate response A from OpenAI
-  const completionA = await openaiClient.chat.completions.create({
+  const response_A_text = await generateText(fetch, {
+    prompt: sourcePromptText,
     model: MODEL_A_NAME,
-    messages: [
-      {
-        role: 'system',
-        content: 'You are an assistant generating a short creative writing sample based on the user prompt.',
-      },
-      { role: 'user', content: sourcePromptText },
-    ],
-    temperature: 0.7, // You can vary parameters
-    max_tokens: 300,
-    stop: ['\n\n'],
+    systemMessage: getSystemInstruction(MODEL_A_NAME),
+    params: {
+      temperature: 0.7, // You can vary parameters
+      max_tokens: 300,
+      stop: ['\n\n'],
+    },
   });
-  const response_A_text = completionA.choices?.[0]?.message?.content || '';
   const { text: sentenceA } = truncateToSentence(response_A_text);
   if (!sentenceA) {
     return NextResponse.json({ error: 'Generation A ended mid-sentence' }, { status: 500 });
   }
 
   // 3. Generate response B from OpenAI (could be different model or params)
-  const completionB = await openaiClient.chat.completions.create({
+  const response_B_text = await generateText(fetch, {
+    prompt: sourcePromptText,
     model: MODEL_B_NAME,
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are an assistant generating a short creative writing sample based on the user prompt. Try to offer a different style or take than other responses.',
-      },
-      { role: 'user', content: sourcePromptText },
-    ],
-    temperature: 0.8, // Slightly different temperature for variety
-    max_tokens: 300,
-    stop: ['\n\n'],
+    systemMessage: getSystemInstruction(MODEL_B_NAME),
+    params: {
+      temperature: 0.8, // Slightly different temperature for variety
+      max_tokens: 300,
+      stop: ['\n\n'],
+    },
   });
-  const response_B_text = completionB.choices?.[0]?.message?.content || '';
   const { text: sentenceB } = truncateToSentence(response_B_text);
   if (!sentenceB) {
     return NextResponse.json({ error: 'Generation B ended mid-sentence' }, { status: 500 });
@@ -188,9 +166,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    // Combine destructuring to include prompt_text from HEAD and other params from main
     const { prompt_db_id, prompt_text, prefetch, modelA, modelB } = await req.json();
-    const openai = await createOpenAI();
-    return handleGenerateLiveComparison(supabaseAdmin, openai, { prompt_db_id, prompt_text, prefetch, modelA, modelB });
+    // Call handleGenerateLiveComparison, ensuring prompt_text is passed if available
+    // The openai client is no longer passed directly, as aiService handles it.
+    return handleGenerateLiveComparison(supabaseAdmin, { prompt_db_id, prompt_text, prefetch, modelA, modelB });
   } catch (err) {
     console.error('Overall error in /api/generate-live-comparison:', err);
     const errorMessage = err instanceof Error ? err.message : 'Unknown server error';

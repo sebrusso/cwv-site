@@ -14,11 +14,21 @@ function loadRoute(tsPath) {
   }).outputText;
   const outDir = path.join('.test-tmp');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
-  const utilsSrc = fs.readFileSync('src/lib/utils.ts', 'utf8');
-  const utilsOut = ts.transpileModule(utilsSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
-  const utilsPath = path.join(outDir, 'utils.cjs');
-  if (!fs.existsSync(utilsPath)) fs.writeFileSync(utilsPath, utilsOut);
-  compiled = compiled.replace('../../../lib/utils', './utils.cjs');
+
+  const transpileAndWrite = (srcFile, outFilePrefix, relativePath) => {
+    const src = fs.readFileSync(srcFile, 'utf8');
+    const out = ts.transpileModule(src, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+    const outPath = path.join(outDir, `${outFilePrefix}.cjs`);
+    if (!fs.existsSync(outPath)) fs.writeFileSync(outPath, out);
+    // Replace relative paths in the compiled code
+    compiled = compiled.replace(new RegExp(relativePath.replace(/\//g, '\\/'), 'g'), `./${outFilePrefix}.cjs`);
+  };
+
+  transpileAndWrite('src/lib/utils.ts', 'utils', '../../../lib/utils');
+  transpileAndWrite('src/lib/systemInstructions.ts', 'systemInstructions', '../../../lib/systemInstructions');
+  transpileAndWrite('src/lib/models/aiService.ts', 'aiService', '../../../lib/models/aiService');
+  transpileAndWrite('src/lib/models/modelConfig.ts', 'modelConfig', '../../../lib/models/modelConfig');
+  
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');
   fs.writeFileSync(outPath, compiled);
@@ -27,14 +37,16 @@ function loadRoute(tsPath) {
 
 test('generate-openai truncates incomplete sentences', async () => {
   const { handleGenerateOpenAI } = loadRoute('src/app/api/generate-openai/route.ts');
-  const fetchMock = async () => ({
-    ok: true,
-    json: async () => ({
-      choices: [
-        { message: { content: 'Hello world. This is partial' }, finish_reason: 'length' },
-      ],
-    }),
-  });
+  const fetchMock = async (url, init) => {
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [
+          { message: { content: 'Hello world. This is partial' }, finish_reason: 'length' },
+        ],
+      }),
+    };
+  };
   const res = await handleGenerateOpenAI(fetchMock, { prompt: 'test', model: 'gpt' });
   assert.equal(res.status, 200);
   const body = await res.json();
@@ -78,48 +90,53 @@ test('generate-live-comparison trims both responses', async () => {
   };
   
   let call = 0;
-  const openai = {
-    chat: {
-      completions: {
-        create: async () => {
-          call++;
-          return { 
-            choices: [
-              {
-                message: {
-                  content: call === 1 ? 'A sentence. And partial' : 'Another full sentence.',
-                },
-                finish_reason: 'length',
-              },
-            ]
-          };
-        }
-      }
-    }
+  const fetchMock = async () => {
+    call++;
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: { content: call === 1 ? 'A sentence. And partial' : 'Another full sentence.' },
+            finish_reason: 'length',
+          },
+        ],
+      }),
+    };
   };
-  
-  const res = await handleGenerateLiveComparison(supabase, openai, { prompt_db_id: 'p1' });
+  const originalFetch = global.fetch;
+  // @ts-ignore
+  global.fetch = fetchMock;
+  const res = await handleGenerateLiveComparison(supabase, { prompt_db_id: 'p1' });
+  global.fetch = originalFetch;
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.response_A, 'A sentence.');
   assert.equal(body.response_B, 'Another full sentence.');
 });
-
 test('generate-live-comparison accepts custom prompt text', async () => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.com';
   process.env.SUPABASE_SERVICE_KEY = 'test-key';
 
   const { handleGenerateLiveComparison } = loadRoute('src/app/api/generate-live-comparison/route.ts');
-  let insertedPrompt;
-  const supabase = {
+  let insertedPromptTextInDb; // To check what's inserted in DB
+  let promptTextUsedForGeneration; // To check what's passed to AI generation
+
+  const supabaseMock = {
     from: (table) => {
       if (table === 'writingprompts-pairwise-test') {
         return {
-          insert: (data) => ({
-            select: () => ({
-              single: async () => ({ data: { id: 'new1', prompt: data.prompt }, error: null })
-            })
-          })
+          insert: (data) => {
+            insertedPromptTextInDb = data.prompt; // Capture the prompt text being inserted
+            return {
+              select: () => ({
+                single: async () => ({ data: { id: 'new1', prompt: data.prompt }, error: null })
+              })
+            };
+          },
+          select: () => ({ // Fallback for non-custom prompt path, not strictly needed for this test
+            eq: () => ({ single: async () => ({ data: { id: 'p1', prompt: 'Default Prompt' }, error: null }) }),
+          }),
         };
       }
       if (table === 'live_generations') {
@@ -130,21 +147,50 @@ test('generate-live-comparison accepts custom prompt text', async () => {
       return {};
     }
   };
-  const openai = {
-    chat: {
-      completions: {
-        create: async ({ messages }) => {
-          insertedPrompt = messages[1].content;
-          return { choices: [{ message: { content: 'Done.' }, finish_reason: 'stop' }] };
-        }
-      }
+
+  // Mock global.fetch as aiService.generateText uses it
+  const originalFetch = global.fetch;
+  // @ts-ignore
+  global.fetch = async (url, init) => {
+    if (url.includes('api.openai.com')) { // Check if it's an OpenAI call
+      const body = JSON.parse(init.body as string);
+      promptTextUsedForGeneration = body.messages.find(m => m.role === 'user')?.content;
     }
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Done.' }, finish_reason: 'stop' }] }),
+      text: async () => "Done." // Fallback for non-JSON responses if any
+    };
   };
 
-  const res = await handleGenerateLiveComparison(supabase, openai, { prompt_text: 'My prompt' });
+  // Call with prompt_text, no openai client needed in the call
+  const res = await handleGenerateLiveComparison(supabaseMock, { prompt_text: 'My custom test prompt' });
+  global.fetch = originalFetch; // Restore original fetch
+
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.equal(body.prompt_text, 'My prompt');
-  assert.equal(insertedPrompt, 'My prompt');
+  assert.equal(body.prompt_text, 'My custom test prompt'); // Check if the API returns the custom prompt
+  assert.equal(insertedPromptTextInDb, 'My custom test prompt'); // Check if custom prompt was "inserted"
+  assert.equal(promptTextUsedForGeneration, 'My custom test prompt'); // Check if custom prompt was used for AI generation
 });
 
+test('generate-openai uses provided parameters', async () => {
+  const { handleGenerateOpenAI } = loadRoute('src/app/api/generate-openai/route.ts');
+  let captured;
+  const fetchMock = async (url, init) => {
+    captured = JSON.parse(init.body);
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Done.' }, finish_reason: 'stop' }] }),
+    };
+  };
+  const res = await handleGenerateOpenAI(fetchMock, { prompt: 'hi', model: 'gpt-test', params: { temperature: 0.9 } });
+  assert.equal(res.status, 200);
+  assert.equal(captured.temperature, 0.9);
+  const systemMessage = captured.messages.find(m => m.role === 'system');
+  assert.ok(systemMessage, 'System message should be present');
+  // Check if systemInstructions.getSystemInstruction was called for 'gpt-test' (or a default)
+  // This requires systemInstructions.ts to export a simple getSystemInstruction for testing or actual logic.
+  // For this test, we assume getSystemInstruction returns a non-empty string for 'gpt-test' or any model.
+  assert.ok(systemMessage.content.length > 0, 'System message content should not be empty');
+});

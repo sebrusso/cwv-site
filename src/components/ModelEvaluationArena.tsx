@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase/client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -10,11 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
 import { ModelSelector } from "@/components/ModelSelector";
 
-// Initialize Supabase client (used for client-side reads if any, and by old logic if not fully removed)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Supabase client
 
 function similarity(a: string, b: string) {
   const setA = new Set(a.split(/\s+/));
@@ -28,22 +24,22 @@ function similarity(a: string, b: string) {
 interface LiveEvaluationDisplayData {
   source_prompt_db_id: string; // UUID from the 'writingprompts-pairwise-test' table
   source_prompt_text: string;
-  live_generation_id: string; // ID from the 'live_generations' table (this will be the prompt_id for model_evaluations)
+  live_generation_id: string; // ID from the 'live_generations' table used for generation
   generated_response_A: string;
   generated_response_B: string;
   model_A_name: string;
   model_B_name: string;
 }
 
-// ModelEvaluation interface remains similar, but prompt_id will now be live_generation_id
+// ModelEvaluation represents a stored evaluation of one model's output
 interface ModelEvaluation {
   id?: string;
   user_id: string;
-  prompt_id: string; // This will be the live_generation_id (UUID)
-  selected_response_text: string; // Store the actual text selected
-  selected_model_name: string; // Store the model name of the selected text
-  // ground_truth: string; // Re-evaluate if needed, for live comparison, this is subjective
-  // is_correct: boolean; // For live A/B, correctness isn't predefined
+  prompt_id: string; // ID from the writingprompts-pairwise-test table
+  model_name: string; // Model chosen by the user
+  selected_response: string; // Text of the chosen response
+  ground_truth: string; // For live comparisons we store the chosen text
+  is_correct: boolean; // Always true since choice implies correctness
   created_at?: string;
 }
 
@@ -75,7 +71,6 @@ export function ModelEvaluationArena() {
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [evaluationStart, setEvaluationStart] = useState<number>(0);
-  const [isPrefetching, setIsPrefetching] = useState(false);
   const [prefetchedPromptId, setPrefetchedPromptId] = useState<string | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
@@ -105,14 +100,21 @@ export function ModelEvaluationArena() {
       } catch (err) {
         console.error("Failed to fetch available models:", err);
         // Fallback models if API fails
-        setAvailableModels(['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo']);
+        setAvailableModels([
+          'gpt-4o',
+          'gpt-4o-mini',
+          'gpt-4-turbo',
+          'gpt-3.5-turbo',
+          'claude-3-opus',
+          'gemini-pro',
+        ]);
       }
     };
 
     fetchAvailableModels();
   }, []);
 
-  const getRandomPromptId = async () => {
+  const getRandomPromptId = useCallback(async () => {
     const { count, error: countError } = await supabase
       .from("writingprompts-pairwise-test")
       .select("id", { count: "exact", head: true });
@@ -127,7 +129,7 @@ export function ModelEvaluationArena() {
       .single();
     if (randomPromptError || !randomPromptEntry) throw randomPromptError || new Error("Failed to fetch ID");
     return randomPromptEntry.id as string;
-  };
+  }, [isClientMounted]);
 
   const fetchComparison = async (
     id: string | null,
@@ -158,16 +160,13 @@ export function ModelEvaluationArena() {
     if (!selectedModels) return;
     
     try {
-      setIsPrefetching(true);
       const id = await getRandomPromptId();
       await fetchComparison(id, selectedModels.modelA, selectedModels.modelB, undefined, true);
       setPrefetchedPromptId(id);
     } catch (err) {
       console.error("Prefetch error", err);
-    } finally {
-      setIsPrefetching(false);
     }
-  }, [selectedModels, isClientMounted]);
+  }, [selectedModels, getRandomPromptId]);
 
   const generateComparison = async (promptText?: string) => {
     if (!selectedModels) {
@@ -275,10 +274,11 @@ export function ModelEvaluationArena() {
       try {
         const evaluationData: ModelEvaluation = {
           user_id: user.id,
-          prompt_id: currentDisplayData.live_generation_id, // This is crucial: use live_generation_id
-          selected_response_text: selectedActualText,
-          selected_model_name: selectedModelName,
-          // 'ground_truth' and 'is_correct' are omitted as they don't fit this live A/B comparison mode
+          prompt_id: currentDisplayData.source_prompt_db_id,
+          model_name: selectedModelName,
+          selected_response: selectedActualText,
+          ground_truth: selectedActualText,
+          is_correct: true,
         };
 
         console.log("Saving live evaluation data:", JSON.stringify(evaluationData, null, 2));
@@ -365,11 +365,32 @@ export function ModelEvaluationArena() {
     setIsSubmittingRationale(true);
     setRationaleError(null);
     try {
+      if (!currentDisplayData || !selectedResponseFullText) throw new Error('Missing evaluation context');
+
+      const selectedSide = selectedResponseFullText === responses.left ? 'left' : 'right';
+      const selectedOriginalModel = responseMapping[selectedSide];
+      const selectedModelName =
+        selectedOriginalModel === 'A'
+          ? currentDisplayData.model_A_name
+          : currentDisplayData.model_B_name;
+
       const rationaleData: ModelRationale = {
         evaluation_id: currentEvaluationId,
         rationale: rationale,
       };
-      const { error } = await supabase.from("model_writing_rationales").insert(rationaleData);
+
+      const insertData = {
+        evaluation_id: rationaleData.evaluation_id,
+        rationale: rationaleData.rationale,
+        user_id: user.id,
+        prompt_id: currentDisplayData.source_prompt_db_id,
+        model_name: selectedModelName,
+        selected_response: selectedResponseFullText,
+        ground_truth: selectedResponseFullText,
+        is_correct: true,
+      };
+
+      const { error } = await supabase.from('model_writing_rationales').insert(insertData);
       if (error) throw error;
       
       console.log("Rationale saved for evaluation ID:", currentEvaluationId);
@@ -414,7 +435,7 @@ export function ModelEvaluationArena() {
           <h2 className="text-xl font-semibold mb-4">Choose Models to Compare</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Select two AI models to generate stories for comparison. The models will create responses to the same prompt, 
-            and you'll evaluate which response you prefer.
+            and you&apos;ll evaluate which response you prefer.
           </p>
         </div>
         

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function handleModelLeaderboard(supabase: SupabaseClient) {
+async function handleModelLeaderboard(supabase: SupabaseClient) {
   const { data: modelEvalData, error: modelErr } = await supabase
     .from('model_evaluations')
     .select('model_name,is_correct');

@@ -6,6 +6,7 @@ import { UserProvider } from "@/contexts/UserContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { NavigationBar } from "@/components/NavigationBar";
 import { OnboardingDebugPanel } from "@/components/OnboardingDebugPanel";
+import { config } from "@/config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,7 +42,7 @@ export default function RootLayout({
               <NavigationBar />
               {children}
             </main>
-            <OnboardingDebugPanel />
+            {config.debugMode && <OnboardingDebugPanel />}
           </UserProvider>
         </ToastProvider>
       </body>
