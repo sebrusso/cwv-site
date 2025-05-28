@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Session, User } from "@supabase/supabase-js";
 
@@ -9,6 +10,13 @@ type UserProfile = {
   username: string;
   score: number;
   viewed_prompts: string[];
+  age_range?: string | null;
+  education_level?: string | null;
+  first_language?: string | null;
+  literature_interest?: string | null;
+  reading_habits?: string | null;
+  writing_background?: string | null;
+  demographics_completed?: boolean;
 };
 
 // Define an error type for the signIn function
@@ -24,7 +32,13 @@ type UserContextType = {
   profile: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
-  signIn: (email: string) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, redirectPath?: string) => Promise<{ error: AuthError | null }>; // Keep redirectPath for OTP, even if type in main differs, the implementation handles it.
+  signInWithPassword: (
+    email: string,
+    password: string,
+    remember?: boolean
+  ) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   incrementScore: () => Promise<void>;
@@ -38,6 +52,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     // Get initial session
@@ -85,6 +101,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       setProfile(data);
+      if (!data.demographics_completed && pathname !== "/onboarding") {
+        router.push("/onboarding");
+      }
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
@@ -92,12 +111,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signIn = async (email: string) => {
+  const signIn = async (email: string, redirectPath?: string) => {
     setIsLoading(true);
     try {
       // Use NEXT_PUBLIC_SITE_URL environment variable if available, otherwise fall back to window.location.origin
-      const redirectUrl =
+      const baseUrl =
         process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const redirectUrl = redirectPath
+        ? `${baseUrl}/auth/callback?redirect=${encodeURIComponent(redirectPath)}`
+        : baseUrl;
 
       const { error } = await supabase.auth.signInWithOtp({
         email,
@@ -108,6 +130,44 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return { error: error as AuthError };
     } catch (err) {
       console.error("Error signing in:", err);
+      const error =
+        err instanceof Error
+          ? ({ message: err.message } as AuthError)
+          : ({ message: "An unknown error occurred" } as AuthError);
+      return { error };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signInWithPassword = async (
+    email: string,
+    password: string,
+    remember?: boolean // Add remember parameter here to match type
+  ) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error: error as AuthError };
+    } catch (err) {
+      console.error("Error signing in:", err);
+      const error =
+        err instanceof Error
+          ? ({ message: err.message } as AuthError)
+          : ({ message: "An unknown error occurred" } as AuthError);
+      return { error };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signUp = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      return { error: error as AuthError };
+    } catch (err) {
+      console.error("Error signing up:", err);
       const error =
         err instanceof Error
           ? ({ message: err.message } as AuthError)
@@ -174,6 +234,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     session,
     isLoading,
     signIn,
+    signInWithPassword,
+    signUp,
     signOut,
     updateProfile,
     incrementScore,

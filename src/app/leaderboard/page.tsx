@@ -1,112 +1,94 @@
-"use client";
-import { useEffect, useState } from "react";
-import { LeaderboardTable, TableColumn } from "@/components/LeaderboardTable";
-import { Tabs } from "@/components/Tabs";
+'use client';
+import { useEffect, useState } from 'react';
 
-interface QualityEntry {
+interface Entry {
   model: string;
-  winRate: number;
+  total: number;
+  successRate: number;
 }
 
-interface DeceptionEntry {
-  model: string;
-  deceptionRate: number;
-  total: number;
+function sortByRate(a: Entry, b: Entry) {
+  return b.successRate - a.successRate;
 }
 
 export default function LeaderboardPage() {
-  const [quality, setQuality] = useState<QualityEntry[]>([]);
-  const [deception, setDeception] = useState<DeceptionEntry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
 
   useEffect(() => {
-    const fetchAll = async () => {
+    const fetchData = async () => {
+      const params = new URLSearchParams();
+      if (start) params.set('start', start);
+      if (end) params.set('end', end);
       try {
-        const [qRes, dRes] = await Promise.all([
-          fetch("/api/model-leaderboard"),
-          fetch("/api/human-deception-leaderboard"),
-        ]);
-        if (qRes.ok) setQuality(await qRes.json());
-        if (dRes.ok) setDeception(await dRes.json());
+        const res = await fetch(`/api/human-deception-leaderboard?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setEntries(data);
+        }
       } catch {
-        // ignore errors
+        // ignore errors for now
       }
     };
-    fetchAll();
-  }, []);
+    fetchData();
+  }, [start, end]);
 
-  const qualityCols: TableColumn<QualityEntry>[] = [
-    {
-      key: "model",
-      label: "Model",
-      sortable: true,
-    },
-    {
-      key: "winRate",
-      label: "Win Rate",
-      sortable: true,
-      render: (row) => (
-        <div className="flex items-center gap-2 w-40">
-          <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded">
-            <div
-              className="h-full bg-primary rounded"
-              style={{ width: `${Math.round(row.winRate * 100)}%` }}
-            />
-          </div>
-          <span>{(row.winRate * 100).toFixed(1)}%</span>
-        </div>
-      ),
-    },
-  ];
-
-  const deceptionCols: TableColumn<DeceptionEntry>[] = [
-    { key: "model", label: "Model", sortable: true },
-    {
-      key: "deceptionRate",
-      label: "Fool Rate",
-      sortable: true,
-      render: (row) => (
-        <div className="flex items-center gap-2 w-40">
-          <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded">
-            <div
-              className="h-full bg-primary rounded"
-              style={{ width: `${Math.round(row.deceptionRate * 100)}%` }}
-            />
-          </div>
-          <span>{(row.deceptionRate * 100).toFixed(1)}%</span>
-        </div>
-      ),
-    },
-  ];
+  const sorted = [...entries].sort(sortByRate);
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6 p-4">
-      <h1 className="text-2xl font-semibold">Leaderboards</h1>
-      <Tabs
-        tabs={[
-          {
-            key: "quality",
-            title: "Model Quality",
-            content: (
-              <LeaderboardTable
-                entries={quality}
-                columns={qualityCols}
-                exportName="model-quality.csv"
-              />
-            ),
-          },
-          {
-            key: "deception",
-            title: "Human Deception",
-            content: (
-              <LeaderboardTable
-                entries={deception}
-                columns={deceptionCols}
-                exportName="human-deception.csv"
-              />
-            ),
-          },
-        ]}
-      />
+    <div className="max-w-3xl mx-auto flex flex-col gap-6">
+      <h1 className="text-2xl font-semibold">Model Leaderboard</h1>
+      <div className="flex gap-2 items-center">
+        <label className="text-sm">
+          Start:
+          <input
+            type="date"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            className="border rounded p-1 ml-1"
+          />
+        </label>
+        <label className="text-sm">
+          End:
+          <input
+            type="date"
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+            className="border rounded p-1 ml-1"
+          />
+        </label>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
+            <tr>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                #
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Model
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Evaluations
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Success Rate
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            {sorted.map((e, i) => (
+              <tr key={e.model}>
+                <td className="px-4 py-2 text-sm">{i + 1}</td>
+                <td className="px-4 py-2 text-sm">{e.model}</td>
+                <td className="px-4 py-2 text-sm">{e.total}</td>
+                <td className="px-4 py-2 text-sm">{(e.successRate * 100).toFixed(1)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
