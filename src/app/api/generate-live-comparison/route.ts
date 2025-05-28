@@ -13,7 +13,7 @@ const supabaseAdmin = createClient(
 
 // Models are defined in modelConfig.ts and re-exported here for convenience
 
-export interface GenerationData {
+interface GenerationData {
   live_generation_id: string;
   prompt_text: string;
   prompt_db_id: string;
