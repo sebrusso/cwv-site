@@ -46,19 +46,24 @@ test('model leaderboard returns an array of entries', async () => {
   assert.ok(Array.isArray(data));
   assert.equal(data.length, 2, "Should return data for both models");
   
-  // Find model entries
   const modelA = data.find(entry => entry.model === 'A');
   const modelB = data.find(entry => entry.model === 'B');
   
   assert.ok(modelA, "Model A should be in results");
   assert.ok(modelB, "Model B should be in results");
   
-  // Check win rates
-  assert.equal(modelA.humanDeceptions, 1, "Model A should have 1 human deception");
-  assert.equal(modelB.humanDeceptions, 2, "Model B should have 2 human deceptions");
+  // Check human deceptions (human_model_evaluations where is_correct is false)
+  assert.equal(modelA.humanDeceptions, 1, "Model A human deceptions");
+  assert.equal(modelB.humanDeceptions, 2, "Model B human deceptions");
+
+  // Check total evaluations (from model_evaluations)
+  assert.equal(modelA.totalEvaluations, 2, "Model A total evaluations");
+  assert.equal(modelB.totalEvaluations, 1, "Model B total evaluations");
   
-  // Verify model win rates based on the test data
-  assert.equal(modelA.totalEvaluations, 2, "Model A should have 2 evaluations");
-  assert.equal(modelB.totalEvaluations, 1, "Model B should have 1 evaluation");
+  // Check win rate (based on model_evaluations: wins / totalEvaluations)
+  // Model A: 1 win / 2 total = 0.5
+  // Model B: 1 win / 1 total = 1.0
+  assert.ok(Math.abs(modelA.winRate - 0.5) < 1e-6, "Model A win rate");
+  assert.ok(Math.abs(modelB.winRate - 1.0) < 1e-6, "Model B win rate");
 });
 
