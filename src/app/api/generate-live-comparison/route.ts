@@ -15,13 +15,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Define model names - you can adjust these or make them configurable
-const MODEL_A_NAME = 'gpt-4o'; // Example: Use a powerful model for A
-const MODEL_B_NAME = 'gpt-4o-mini'; // Example: Use a faster/cheaper model for B, or vary parameters
+
 
 export async function POST(req: Request) {
   try {
-    const { prompt_db_id } = await req.json(); // Expecting id from the 'writingprompts-pairwise-test' table
+    const { prompt_db_id, model_a_name, model_b_name } = await req.json();
+    const MODEL_A_NAME = model_a_name || 'gpt-4o';
+    const MODEL_B_NAME = model_b_name || 'gpt-4o-mini';
 
     if (!prompt_db_id) {
       return NextResponse.json({ error: 'Prompt ID is required' }, { status: 400 });

@@ -1,7 +1,8 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { ModelSelector } from "./ModelSelector";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -12,6 +13,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+const MODELS = ["gpt-4o", "gpt-4.5-turbo", "gpt-4o-mini", "gpt-4.0"];
 
 // Updated interface for the data structure we'll manage in the state
 interface LiveEvaluationDisplayData {
@@ -74,7 +77,12 @@ export function ModelEvaluationArena() {
 
   const { user } = useUser();
 
-  const fetchNewLiveComparison = async () => {
+  const [selectedModels, setSelectedModels] = useState<
+    { modelA: string; modelB: string } | null
+  >(null);
+
+  const fetchNewLiveComparison = useCallback(async () => {
+    if (!selectedModels) return;
     console.log("fetchNewLiveComparison called. User object:", user);
     console.log("Current Supabase auth session:", supabase.auth.getSession()); // Log current session
 
@@ -117,7 +125,11 @@ export function ModelEvaluationArena() {
       const apiResponse = await fetch("/api/generate-live-comparison", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt_db_id: sourcePromptDbId }),
+        body: JSON.stringify({
+          prompt_db_id: sourcePromptDbId,
+          model_a_name: selectedModels.modelA,
+          model_b_name: selectedModels.modelB,
+        }),
       });
 
       if (!apiResponse.ok) {
@@ -158,11 +170,14 @@ export function ModelEvaluationArena() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, selectedModels]);
 
+  // Fetch a comparison when the component mounts
   useEffect(() => {
-    fetchNewLiveComparison();
-  }, []); // Fetch on initial load
+    if (selectedModels) {
+      fetchNewLiveComparison();
+    }
+  }, [fetchNewLiveComparison, selectedModels]);
 
   const handleSelection = (side: "left" | "right") => {
     if (selectedResponseFullText || !currentDisplayData) return; // Already selected or no data
@@ -274,6 +289,9 @@ export function ModelEvaluationArena() {
   };
 
   // --- UI Rendering ---
+  if (!selectedModels) {
+    return <ModelSelector models={MODELS} onSelect={setSelectedModels} />;
+  }
   if (isLoading && !currentDisplayData) {
     return <div className="text-center p-10">Loading new evaluation...</div>;
   }
