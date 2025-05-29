@@ -26,7 +26,28 @@ export function buildBalancedChatRequest(
   const hi             = Math.round(refWords * 1.05);
   const maxTokens      = Math.ceil(refWords * 1.35) + 50; // buffer
 
-  const systemMsg = `
+  // Optimize parameters for GPT-4.1's enhanced instruction following
+  const isGPT41 = model === 'gpt-4.1';
+  const optimizedParams = isGPT41 ? {
+    temperature: 0.6,        // Lower temperature for better instruction adherence
+    top_p: 0.85,            // Slightly more focused sampling
+    frequency_penalty: 0.1,  // Reduced to allow for better narrative flow
+    presence_penalty: 0.05,  // Small penalty for better content diversity
+  } : {
+    temperature: 0.7,
+    top_p: 0.9,
+    frequency_penalty: 0.15,
+    presence_penalty: 0,
+  };
+
+  const systemMsg = isGPT41 ? `
+You are an exceptional award-winning short-story author with precise narrative control.
+Write ONE complete, engaging story in exactly *${refParas}* paragraphs.
+Target approximately ${avgParaWords} words per paragraph (±10% flexibility).
+Aim for total word count between ${lo} and ${hi} words.
+Focus on rich storytelling while maintaining these structural constraints naturally.
+End with: <|endofstory|>
+  `.trim() : `
 You are an award-winning short-story author.
 Write ONE complete story in *${refParas}* paragraphs.
 Each paragraph ≈ ${avgParaWords} words (±15).
@@ -42,10 +63,7 @@ End with the token: <|endofstory|>.
       { role: "user",   content: prompt  }
     ],
     max_tokens:        maxTokens,
-    temperature:       0.7,
-    top_p:             0.9,
-    frequency_penalty: 0.15,
-    presence_penalty:  0,
+    ...optimizedParams,
     stop:              ["<|endofstory|>"]
   };
 } 

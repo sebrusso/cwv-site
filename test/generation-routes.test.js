@@ -196,3 +196,33 @@ test('generate-openai uses provided parameters', async () => {
   // For this test, we assume getSystemInstruction returns a non-empty string for 'gpt-test' or any model.
   assert.ok(systemMessage.content.length > 0, 'System message content should not be empty');
 });
+
+test('gpt-4.1 model configuration and system instructions', async () => {
+  const { handleGenerateOpenAI } = loadRoute('src/app/api/generate-openai/route.ts');
+  let captured;
+  const fetchMock = async (url, init) => {
+    captured = JSON.parse(init.body);
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Generated with GPT-4.1.' }, finish_reason: 'stop' }] }),
+    };
+  };
+  
+  const res = await handleGenerateOpenAI(fetchMock, { prompt: 'Write a creative story', model: 'gpt-4.1' });
+  assert.equal(res.status, 200);
+  
+  // Verify GPT-4.1 model is used
+  assert.equal(captured.model, 'gpt-4.1');
+  
+  // Verify system message contains GPT-4.1 specific instructions
+  const systemMessage = captured.messages.find(m => m.role === 'system');
+  assert.ok(systemMessage, 'System message should be present');
+  assert.ok(systemMessage.content.includes('GPT-4.1'), 'System message should reference GPT-4.1');
+  assert.ok(systemMessage.content.includes('exceptional'), 'System message should emphasize GPT-4.1 capabilities');
+  
+  // Verify default max_tokens is higher for GPT-4.1
+  assert.ok(captured.max_tokens >= 512, 'GPT-4.1 should have higher max_tokens default');
+  
+  const body = await res.json();
+  assert.equal(body.text, 'Generated with GPT-4.1.');
+});
