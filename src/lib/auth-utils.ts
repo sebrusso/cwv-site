@@ -1,5 +1,5 @@
 import { config } from '@/config';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, SupabaseClient } from '@supabase/supabase-js';
 
 // Mock user data for when authentication is disabled
 export const MOCK_USER_ID = 'mock-user-id';
@@ -58,7 +58,7 @@ export const getMockAuthData = () => {
 };
 
 // Helper function for API routes to get user ID (real or mock)
-export const getUserIdForApi = async (supabase: any): Promise<string | null> => {
+export const getUserIdForApi = async (supabase: SupabaseClient): Promise<string | null> => {
   if (shouldBypassAuth()) {
     return MOCK_USER_ID;
   }
@@ -71,7 +71,7 @@ export const getUserIdForApi = async (supabase: any): Promise<string | null> => 
 };
 
 // Helper function for API routes to handle authentication
-export const handleApiAuth = async (supabase: any): Promise<{ userId: string | null; isAuthenticated: boolean }> => {
+export const handleApiAuth = async (supabase: SupabaseClient): Promise<{ userId: string | null; isAuthenticated: boolean }> => {
   if (shouldBypassAuth()) {
     return { userId: MOCK_USER_ID, isAuthenticated: true };
   }

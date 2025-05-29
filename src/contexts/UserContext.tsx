@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
+import type { Subscription } from "@supabase/supabase-js";
 import { shouldBypassAuth, getMockAuthData } from "@/lib/auth-utils";
 
 type UserProfile = {
@@ -167,7 +168,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [pathname, router]);
+  }, [pathname, router, user?.email]);
 
   useEffect(() => {
     // If authentication is disabled, set mock data and return early
@@ -209,7 +210,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Store subscription for cleanup
-        return subscription;
+        return { data: { subscription } };
       } catch (error) {
         console.error("Error initializing auth:", error);
         setIsLoading(false);
@@ -218,7 +219,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Initialize auth and store subscription for cleanup
-    let authSubscription: any = null;
+    let authSubscription: { data: { subscription: Subscription } } | null = null;
     initializeAuth().then(subscription => {
       authSubscription = subscription;
     });
@@ -226,7 +227,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // Cleanup function
     return () => {
       if (authSubscription) {
-        authSubscription.unsubscribe();
+        authSubscription.data.subscription.unsubscribe();
       }
     };
   }, [fetchProfile]);
