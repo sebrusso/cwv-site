@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ReportContentButton } from "./ReportContentButton";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { getRandomPrompt } from "@/lib/prompts";
 
 
 function similarity(a: string, b: string) {
@@ -139,43 +140,14 @@ export function HumanEvaluationArena() {
     setLoading(true);
 
     try {
-      const { data: flagged } = await supabase
-        .from("content_reports")
-        .select("content_id")
-        .eq("content_type", "prompt")
-        .eq("resolved", false);
-
-      const excluded = (flagged || []).map((r) => r.content_id);
-      let query = supabase
-        .from("writingprompts-pairwise-test")
-        .select("*")
-        .limit(1);
-      if (excluded.length > 0) {
-        query = query.not("id", "in", `(${excluded.join(",")})`);
-      }
-      
-      // Use a fixed order for SSR, randomize only on client
-      const ascending = isClientMounted ? Math.random() > 0.5 : true;
-      const { data, error } = await query.order("id", { ascending });
-
-      if (error) {
-        const errorMessage =
-          error.code === "PGRST116"
-            ? "Table not found. Please check if 'writingprompts-pairwise-test' exists and you have access to it."
-            : `Database error: ${error.message}`;
-        setError(errorMessage);
-        console.error("Error details:", error);
-        setLoading(false);
-        return;
-      }
-
-      if (!data || data.length === 0) {
+      const data = await getRandomPrompt('*', true);
+      if (!data) {
         setError("No prompt found. Please try again.");
         setLoading(false);
         return;
       }
 
-      const promptData = data[0];
+      const promptData = data;
       setPrompt(promptData);
       setSelectedText(null);
       setFeedback(null);

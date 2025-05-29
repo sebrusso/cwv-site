@@ -9,6 +9,7 @@ import { TextPane } from "@/components/TextPane";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
 import { ModelSelector } from "@/components/ModelSelector";
+import { getRandomPromptId } from "@/lib/prompts";
 
 // Supabase client
 
@@ -114,22 +115,6 @@ export function ModelEvaluationArena() {
     fetchAvailableModels();
   }, []);
 
-  const getRandomPromptId = useCallback(async () => {
-    const { count, error: countError } = await supabase
-      .from("writingprompts-pairwise-test")
-      .select("id", { count: "exact", head: true });
-    if (countError || !count) throw countError || new Error("No prompts");
-    
-    // Use fixed offset for SSR, randomize only on client
-    const randomOffset = isClientMounted ? Math.floor(Math.random() * count) : 0;
-    const { data: randomPromptEntry, error: randomPromptError } = await supabase
-      .from("writingprompts-pairwise-test")
-      .select("id")
-      .range(randomOffset, randomOffset)
-      .single();
-    if (randomPromptError || !randomPromptEntry) throw randomPromptError || new Error("Failed to fetch ID");
-    return randomPromptEntry.id as string;
-  }, [isClientMounted]);
 
   const fetchComparison = async (
     id: string | null,
@@ -158,7 +143,7 @@ export function ModelEvaluationArena() {
 
   const prefetchNextComparison = useCallback(async () => {
     if (!selectedModels) return;
-    
+
     try {
       const id = await getRandomPromptId();
       await fetchComparison(id, selectedModels.modelA, selectedModels.modelB, undefined, true);
@@ -166,7 +151,7 @@ export function ModelEvaluationArena() {
     } catch (err) {
       console.error("Prefetch error", err);
     }
-  }, [selectedModels, getRandomPromptId]);
+  }, [selectedModels]);
 
   const generateComparison = async (promptText?: string) => {
     if (!selectedModels) {

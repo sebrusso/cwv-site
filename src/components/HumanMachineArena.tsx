@@ -14,6 +14,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 
 import { ReportContentButton } from "./ReportContentButton";
 import { AVAILABLE_MODELS } from "@/lib/models/modelConfig";
+import { getRandomPrompt } from "@/lib/prompts";
 
 interface PromptRow {
   id: string;
@@ -95,26 +96,9 @@ export function HumanMachineArena() {
     
     let row: PromptRow | null = null;
     if (selectedId === "random") {
-      console.log('📋 Fetching flagged content...');
-      const { data: flagged } = await supabase
-        .from("content_reports")
-        .select("content_id")
-        .eq("content_type", "prompt")
-        .eq("resolved", false);
-      console.log('📋 Flagged content fetched:', flagged?.length || 0, 'items');
-      
-      const excluded = (flagged || []).map((r) => r.content_id);
-      console.log('🎲 Fetching random prompt...');
-      let query = supabase
-        .from("writingprompts-pairwise-test")
-        .select("id,prompt,chosen")
-        .limit(1);
-      if (excluded.length > 0) {
-        query = query.not("id", "in", `(${excluded.join(",")})`);
-      }
-      const { data } = await query.order("id", { ascending: Math.random() > 0.5 });
+      console.log('🎲 Fetching random prompt via util...');
+      row = await getRandomPrompt('id,prompt,chosen', true);
       console.log('🎲 Random prompt fetched');
-      if (data && data.length > 0) row = data[0];
     } else {
       console.log('🎯 Fetching specific prompt:', selectedId);
       const { data } = await supabase
