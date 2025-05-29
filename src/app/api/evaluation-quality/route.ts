@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { handleApiAuth } from '@/lib/auth-utils';
 
 interface MetricPayload {
   evaluationTime: number;
@@ -34,26 +35,32 @@ async function getClient() {
   );
 }
 
-async function handlePostQuality(
+async function handleEvaluationQuality(
   supabase: SupabaseClient,
-  body: { evaluationTime: number; promptSimilarity: number; confidenceScore: number }
+  payload: {
+    evaluationTime: number;
+    promptSimilarity: number;
+    confidenceScore: number;
+  },
 ) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+  const { userId, isAuthenticated } = await handleApiAuth(supabase);
+
+  if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { evaluationTime, promptSimilarity, confidenceScore } = body;
-  const { error } = await supabase.from('evaluation_quality').insert({
-    user_id: session.user.id,
-    evaluation_time: evaluationTime,
-    prompt_similarity: promptSimilarity,
-    confidence_score: confidenceScore,
+
+  const { error } = await supabase.from('evaluation_quality_metrics').insert({
+    user_id: userId,
+    evaluation_time: payload.evaluationTime,
+    prompt_similarity: payload.promptSimilarity,
+    confidence_score: payload.confidenceScore,
   });
+
   if (error) {
+    console.error('Failed to save evaluation quality metrics', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
   return NextResponse.json({ success: true });
 }
 
@@ -87,7 +94,7 @@ async function handleGetQuality(supabase: SupabaseClient) {
 export async function POST(req: Request) {
   const supabase = await getClient();
   const payload = (await req.json()) as MetricPayload;
-  return handlePostQuality(supabase, payload);
+  return handleEvaluationQuality(supabase, payload);
 }
 
 export async function GET() {

@@ -83,6 +83,7 @@ export function HumanMachineArena() {
   }
 
   const fetchSample = async () => {
+    console.log('🚀 fetchSample started');
     setLoading(true);
     setProgress(20);
     setResult(null);
@@ -94,12 +95,16 @@ export function HumanMachineArena() {
     
     let row: PromptRow | null = null;
     if (selectedId === "random") {
+      console.log('📋 Fetching flagged content...');
       const { data: flagged } = await supabase
         .from("content_reports")
         .select("content_id")
         .eq("content_type", "prompt")
         .eq("resolved", false);
+      console.log('📋 Flagged content fetched:', flagged?.length || 0, 'items');
+      
       const excluded = (flagged || []).map((r) => r.content_id);
+      console.log('🎲 Fetching random prompt...');
       let query = supabase
         .from("writingprompts-pairwise-test")
         .select("id,prompt,chosen")
@@ -108,19 +113,24 @@ export function HumanMachineArena() {
         query = query.not("id", "in", `(${excluded.join(",")})`);
       }
       const { data } = await query.order("id", { ascending: Math.random() > 0.5 });
+      console.log('🎲 Random prompt fetched');
       if (data && data.length > 0) row = data[0];
     } else {
+      console.log('🎯 Fetching specific prompt:', selectedId);
       const { data } = await supabase
         .from("writingprompts-pairwise-test")
         .select("id,prompt,chosen")
         .eq("id", selectedId)
         .single();
+      console.log('🎯 Specific prompt fetched');
       row = data;
     }
     if (!row) {
+      console.log('❌ No prompt found');
       setLoading(false);
       return;
     }
+    console.log('✅ Prompt ready, calling API...');
     setCurrentPromptId(row.id);
     setProgress(60);
     const aiRes = await fetch("/api/generate-openai", {
@@ -128,17 +138,20 @@ export function HumanMachineArena() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         prompt: row.prompt, 
-        model,
-        referenceStory: row.chosen
+        model
       }),
     });
+    console.log('🤖 API call completed');
     const { text } = await aiRes.json();
+    console.log('📝 Response parsed');
     setProgress(80);
+    console.log('🎭 Setting up texts...');
     const isHumanLeft = Math.random() < 0.5;
     setTexts({ left: isHumanLeft ? row.chosen : text, right: isHumanLeft ? text : row.chosen });
     setMapping({ left: isHumanLeft ? "human" : "ai", right: isHumanLeft ? "ai" : "human" });
     setProgress(100);
     setLoading(false);
+    console.log('✨ fetchSample completed');
     
     // Reset scroll positions
     if (leftTextRef.current) leftTextRef.current.scrollTop = 0;

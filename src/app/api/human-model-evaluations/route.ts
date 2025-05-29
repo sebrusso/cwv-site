@@ -2,21 +2,20 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { handleApiAuth } from '@/lib/auth-utils';
 
 async function handleHumanModelEvaluation(
   supabase: SupabaseClient,
   { prompt_id, is_correct, model_name = '' }: { prompt_id: string; is_correct: boolean; model_name?: string },
 ) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { userId, isAuthenticated } = await handleApiAuth(supabase);
 
-  if (!session) {
+  if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { error } = await supabase.from('human_model_evaluations').insert({
-    user_id: session.user.id,
+    user_id: userId,
     prompt_id,
     model_name,
     guess_correct: is_correct,

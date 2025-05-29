@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { config as appConfig } from '@/config';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -8,6 +9,11 @@ export async function middleware(request: NextRequest) {
       headers: request.headers,
     },
   });
+
+  // If authentication is disabled globally, skip all auth checks
+  if (appConfig.disableAuthentication) {
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

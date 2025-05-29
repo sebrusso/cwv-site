@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { handleApiAuth } from '@/lib/auth-utils';
 
 export interface ComparisonPayload {
   modelA: string;
@@ -14,10 +15,9 @@ async function handleModelComparison(
   supabase: SupabaseClient,
   payload: ComparisonPayload
 ) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+  const { userId, isAuthenticated } = await handleApiAuth(supabase);
+  
+  if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -30,7 +30,7 @@ async function handleModelComparison(
   }
 
   const { error } = await supabase.from('model_comparisons').insert({
-    user_id: session.user.id,
+    user_id: userId,
     model_a: modelA,
     model_b: modelB,
     winner,

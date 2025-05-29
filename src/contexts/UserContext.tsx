@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
+import { shouldBypassAuth, getMockAuthData } from "@/lib/auth-utils";
 
 type UserProfile = {
   id: string;
@@ -54,6 +55,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const fetchProfile = useCallback(async (userId: string) => {
+    // If authentication is disabled, use mock profile
+    if (shouldBypassAuth()) {
+      const mockData = getMockAuthData();
+      setProfile(mockData.profile);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       console.log('Fetching profile for user:', userId);
       
@@ -161,37 +170,73 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
+    // If authentication is disabled, set mock data and return early
+    // This prevents Supabase from trying to refresh tokens or handle auth
+    if (shouldBypassAuth()) {
+      const mockData = getMockAuthData();
+      setUser(mockData.user);
+      setSession(mockData.session);
+      setProfile(mockData.profile);
+      setIsLoading(false);
+      return;
+    }
+
+    // Only initialize Supabase auth when authentication is enabled
+    const initializeAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfile(session.user.id);
+        } else {
+          setIsLoading(false);
+        }
+
+        // Listen for auth changes
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            fetchProfile(session.user.id);
+          } else {
+            setProfile(null);
+            setIsLoading(false);
+          }
+        });
+
+        // Store subscription for cleanup
+        return subscription;
+      } catch (error) {
+        console.error("Error initializing auth:", error);
         setIsLoading(false);
+        return null;
       }
+    };
+
+    // Initialize auth and store subscription for cleanup
+    let authSubscription: any = null;
+    initializeAuth().then(subscription => {
+      authSubscription = subscription;
     });
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-        setIsLoading(false);
-      }
-    });
-
+    // Cleanup function
     return () => {
-      subscription.unsubscribe();
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
     };
   }, [fetchProfile]);
 
   const signIn = async (email: string, redirectPath?: string) => {
+    // If authentication is disabled, return success immediately
+    if (shouldBypassAuth()) {
+      return { error: null };
+    }
+
     setIsLoading(true);
     try {
       // Use NEXT_PUBLIC_SITE_URL environment variable if available, otherwise fall back to window.location.origin
@@ -225,6 +270,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string
   ) => {
+    // If authentication is disabled, return success immediately
+    if (shouldBypassAuth()) {
+      return { error: null };
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -242,6 +292,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
+    // If authentication is disabled, return success immediately
+    if (shouldBypassAuth()) {
+      return { error: null };
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signUp({ email, password });
@@ -259,6 +314,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // If authentication is disabled, do nothing
+    if (shouldBypassAuth()) {
+      return;
+    }
+
     setIsLoading(true);
     await supabase.auth.signOut();
     setIsLoading(false);
@@ -267,6 +327,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!user) {
       throw new Error('No user found');
+    }
+
+    // If authentication is disabled, update profile state only
+    if (shouldBypassAuth()) {
+      const currentProfile = profile || getMockAuthData().profile;
+      const updatedProfile = { 
+        ...currentProfile,
+        ...updates 
+      } as UserProfile;
+      setProfile(updatedProfile);
+      return updatedProfile;
     }
 
     try {

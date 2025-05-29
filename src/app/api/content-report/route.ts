@@ -3,25 +3,27 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { handleApiAuth } from '@/lib/auth-utils';
 
 async function handleContentReport(
   supabase: SupabaseClient,
-  body: { contentType: string; contentId: string; reason?: string }
+  payload: { prompt_id: string; reason: string; details?: string },
 ) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+  const { userId, isAuthenticated } = await handleApiAuth(supabase);
+
+  if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { contentType, contentId, reason } = body;
+
   const { error } = await supabase.from('content_reports').insert({
-    user_id: session.user.id,
-    content_type: contentType,
-    content_id: contentId,
-    reason,
+    user_id: userId,
+    prompt_id: payload.prompt_id,
+    reason: payload.reason,
+    details: payload.details,
   });
+
   if (error) {
+    console.error('Failed to save content report', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({ success: true });

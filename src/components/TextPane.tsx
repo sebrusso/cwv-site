@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, forwardRef } from "react";
+import { useEffect, useRef, useState, forwardRef, useMemo } from "react";
 import { wordCount, readingTimeMinutes } from "@/lib/text-utils";
 
 type Props = {
@@ -41,8 +41,9 @@ export const TextPane = forwardRef<HTMLDivElement, Props>(
   const [expanded, setExpanded] = useState(false);
   const [highlight, setHighlight] = useState("");
 
-  const wc = wordCount(text);
-  const rt = readingTimeMinutes(text);
+  // Memoize expensive text calculations to prevent re-computation on every render
+  const wc = useMemo(() => wordCount(text), [text]);
+  const rt = useMemo(() => readingTimeMinutes(text), [text]);
 
   useEffect(() => {
     const handleScroll = () => {

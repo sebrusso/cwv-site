@@ -6,6 +6,7 @@ export interface AppConfig {
   enableResources: boolean;
   enableDataset: boolean;
   showHelpButton: boolean;
+  disableAuthentication: boolean;
 }
 
 export const config: AppConfig = {
@@ -16,4 +17,5 @@ export const config: AppConfig = {
   enableResources: true,
   enableDataset: true,
   showHelpButton: true,
+  disableAuthentication: true,
 };
