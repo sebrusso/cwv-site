@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@/contexts/UserContext";
@@ -17,6 +18,7 @@ export function LoginForm({ onClose }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signInWithPassword } = useUser();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,15 +26,22 @@ export function LoginForm({ onClose }: LoginFormProps) {
     setError(null);
 
     try {
+      console.log("Attempting login with email:", email);
       const { error } = await signInWithPassword(email, password);
       if (error) {
+        console.error("Login error:", error);
         setError(error.message);
-      } else if (onClose) {
-        onClose();
+      } else {
+        console.log("Login successful");
+        if (onClose) {
+          onClose();
+        } else {
+          router.push("/dashboard");
+        }
       }
     } catch (err) {
+      console.error("Unexpected login error:", err);
       setError("An unexpected error occurred");
-      console.error(err);
     } finally {
       setIsLoading(false);
     }

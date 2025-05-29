@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 
 type UserProfile = {
@@ -158,7 +158,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [pathname, router, user?.email]);
+  }, [pathname, router]);
 
   useEffect(() => {
     // Get initial session

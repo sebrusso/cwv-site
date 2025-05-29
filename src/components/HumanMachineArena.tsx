@@ -126,7 +126,11 @@ export function HumanMachineArena() {
     const aiRes = await fetch("/api/generate-openai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: row.prompt, model }),
+      body: JSON.stringify({ 
+        prompt: row.prompt, 
+        model,
+        referenceStory: row.chosen
+      }),
     });
     const { text } = await aiRes.json();
     setProgress(80);

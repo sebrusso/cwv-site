@@ -28,6 +28,8 @@ function loadRoute(tsPath) {
   transpileAndWrite('src/lib/systemInstructions.ts', 'systemInstructions', '../../../lib/systemInstructions');
   transpileAndWrite('src/lib/models/aiService.ts', 'aiService', '../../../lib/models/aiService');
   transpileAndWrite('src/lib/models/modelConfig.ts', 'modelConfig', '../../../lib/models/modelConfig');
+  transpileAndWrite('src/lib/textStats.ts', 'textStats', '../../../lib/textStats');
+  transpileAndWrite('src/lib/ai/storyLengthBalancer.ts', 'storyLengthBalancer', '../../../lib/ai/storyLengthBalancer');
   
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');
@@ -153,7 +155,7 @@ test('generate-live-comparison accepts custom prompt text', async () => {
   // @ts-ignore
   global.fetch = async (url, init) => {
     if (url.includes('api.openai.com')) { // Check if it's an OpenAI call
-      const body = JSON.parse(init.body as string);
+      const body = JSON.parse(init.body);
       promptTextUsedForGeneration = body.messages.find(m => m.role === 'user')?.content;
     }
     return {
