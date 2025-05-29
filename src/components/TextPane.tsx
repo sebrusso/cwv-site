@@ -46,13 +46,17 @@ export const TextPane = forwardRef<HTMLDivElement, Props>(
   const rt = useMemo(() => readingTimeMinutes(text), [text]);
 
   useEffect(() => {
+    let isSyncing = false;
     const handleScroll = () => {
       if (!pairedRef?.current || !localRef.current) return;
+      if (isSyncing) return;
       const ratio =
         localRef.current.scrollTop /
         (localRef.current.scrollHeight - localRef.current.clientHeight);
+      isSyncing = true;
       pairedRef.current.scrollTop =
         ratio * (pairedRef.current.scrollHeight - pairedRef.current.clientHeight);
+      isSyncing = false;
     };
     const src = localRef.current;
     if (src) {
