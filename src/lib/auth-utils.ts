@@ -57,6 +57,35 @@ export const getMockAuthData = () => {
   };
 };
 
+// Utility to clear corrupted auth state
+export const clearAuthState = () => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    // Clear localStorage
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('sb-huavbzsevepndkbgikoi-auth-token');
+    
+    // Clear sessionStorage
+    sessionStorage.removeItem('supabase.auth.token');
+    sessionStorage.removeItem('sb-huavbzsevepndkbgikoi-auth-token');
+    
+    // Clear any other auth-related items
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('supabase') || key.includes('auth'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    console.log('Auth state cleared');
+  } catch (error) {
+    console.error('Error clearing auth state:', error);
+  }
+};
+
 // Helper function for API routes to get user ID (real or mock)
 export const getUserIdForApi = async (supabase: SupabaseClient): Promise<string | null> => {
   if (shouldBypassAuth()) {
@@ -84,4 +113,69 @@ export const handleApiAuth = async (supabase: SupabaseClient): Promise<{ userId:
     userId: session?.user?.id || null,
     isAuthenticated: !!session?.user,
   };
-}; 
+};
+
+/**
+ * Check if we're in development mode
+ */
+export function isDevelopment(): boolean {
+  return process.env.NODE_ENV === 'development';
+}
+
+/**
+ * Get the current site URL for redirects
+ */
+export function getSiteUrl(): string {
+  // In development, check for server port dynamically
+  if (isDevelopment() && typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+}
+
+/**
+ * Debug function to log authentication state
+ */
+export function logAuthState(context: string, data: any) {
+  if (isDevelopment()) {
+    console.log(`[AUTH DEBUG - ${context}]:`, data);
+  }
+}
+
+/**
+ * Handle authentication errors with user-friendly messages
+ */
+export function getAuthErrorMessage(error: any): string {
+  if (!error) return '';
+  
+  const message = error.message || error.toString();
+  
+  // Common error patterns and user-friendly messages
+  if (message.includes('Invalid login credentials') || message.includes('Invalid credentials')) {
+    return 'Invalid email or password. Please check your credentials and try again.';
+  }
+  
+  if (message.includes('Email not confirmed') || message.includes('email_not_confirmed')) {
+    return 'Please check your email and click the confirmation link before signing in.';
+  }
+  
+  if (message.includes('already registered') || message.includes('already been registered')) {
+    return 'An account with this email already exists. Please try signing in instead.';
+  }
+  
+  if (message.includes('rate_limit')) {
+    return 'Too many attempts. Please wait a moment before trying again.';
+  }
+  
+  if (message.includes('weak_password')) {
+    return 'Password is too weak. Please use at least 6 characters with a mix of letters and numbers.';
+  }
+  
+  if (message.includes('invalid_email')) {
+    return 'Please enter a valid email address.';
+  }
+  
+  // Return original message if no pattern matches
+  return message;
+} 

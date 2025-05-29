@@ -1,24 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@/contexts/UserContext";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getAuthErrorMessage, isDevelopment } from "@/lib/auth-utils";
 
-interface LoginFormProps {
-  onClose?: () => void;
-}
-
-export function LoginForm({ onClose }: LoginFormProps) {
+export function LoginForm() {
+  const { signInWithPassword } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [error, setError] = useState<string | React.ReactNode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { signInWithPassword } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Check for URL parameters that might indicate auth issues
+    const urlError = searchParams.get('error');
+    const urlMessage = searchParams.get('message');
+    
+    if (urlError) {
+      setError(getAuthErrorMessage({ message: urlError }));
+    } else if (urlMessage) {
+      setError(urlMessage);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,22 +35,38 @@ export function LoginForm({ onClose }: LoginFormProps) {
     setError(null);
 
     try {
-      console.log("Attempting login with email:", email);
       const { error } = await signInWithPassword(email, password);
       if (error) {
-        console.error("Login error:", error);
-        setError(error.message);
-      } else {
-        console.log("Login successful");
-        if (onClose) {
-          onClose();
+        const friendlyMessage = getAuthErrorMessage(error);
+        
+        // Special handling for email confirmation issues
+        if (friendlyMessage.includes('confirmation') || friendlyMessage.includes('confirmed')) {
+          setError(
+            <div>
+              {friendlyMessage}
+              {isDevelopment() && (
+                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                  <strong>Development Note:</strong> Email confirmation emails may not be sent in local development. 
+                  Contact an administrator if you're unable to confirm your account.
+                </div>
+              )}
+              <div className="mt-2 text-sm">
+                <Link href="/auth/signup" className="text-blue-600 hover:underline">
+                  Need to create an account?
+                </Link>
+              </div>
+            </div>
+          );
         } else {
-          router.push("/dashboard");
+          setError(friendlyMessage);
         }
+      } else {
+        // Success - redirect will be handled by the auth context
+        router.push('/dashboard');
       }
     } catch (err) {
       console.error("Unexpected login error:", err);
-      setError("An unexpected error occurred");
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +77,6 @@ export function LoginForm({ onClose }: LoginFormProps) {
       <div className="space-y-2">
         <div className="text-sm font-medium">Email</div>
         <Input
-          id="email"
           type="email"
           placeholder="you@example.com"
           value={email}
@@ -63,27 +87,20 @@ export function LoginForm({ onClose }: LoginFormProps) {
       <div className="space-y-2">
         <div className="text-sm font-medium">Password</div>
         <Input
-          id="password"
           type="password"
+          placeholder="Your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
       </div>
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked)}
-          />
-          Remember me
-        </label>
-        <Link href="/auth/reset" className="text-sm underline">
-          Forgot password?
-        </Link>
-      </div>
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+          <div className="text-sm text-red-600">
+            {typeof error === 'string' ? error : error}
+          </div>
+        </div>
+      )}
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-background border-t-transparent" />
@@ -91,11 +108,19 @@ export function LoginForm({ onClose }: LoginFormProps) {
           "Sign in"
         )}
       </Button>
-      <p className="text-center text-sm">
-        <Link href="/auth/signup" className="underline">
-          Create account
-        </Link>
-      </p>
+      <div className="text-center space-y-2">
+        <p className="text-sm">
+          Don't have an account?{" "}
+          <Link href="/auth/signup" className="underline">
+            Sign up
+          </Link>
+        </p>
+        <p className="text-xs text-gray-500">
+          <Link href="/auth/reset" className="underline">
+            Forgot your password?
+          </Link>
+        </p>
+      </div>
     </form>
   );
 }

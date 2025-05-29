@@ -17,5 +17,8 @@ export const config: AppConfig = {
   enableResources: true,
   enableDataset: true,
   showHelpButton: true,
+  // PRODUCTION SETTING: Authentication disabled by default
+  // Users can use the app freely, but can still authenticate via profile button if desired
+  // This provides the best UX - no signup friction, but auth available for data persistence
   disableAuthentication: true,
 };
