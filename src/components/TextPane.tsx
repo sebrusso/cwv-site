@@ -26,6 +26,17 @@ function highlightText(text: string, highlight: string) {
   );
 }
 
+export type ScrollElement = HTMLElement & { _isSyncing?: boolean };
+
+export function syncScroll(src: ScrollElement, dest: ScrollElement) {
+  const srcMax = src.scrollHeight - src.clientHeight;
+  const destMax = dest.scrollHeight - dest.clientHeight;
+  if (srcMax <= 0 || destMax <= 0) return;
+  const ratio = src.scrollTop / srcMax;
+  dest._isSyncing = true;
+  dest.scrollTop = ratio * destMax;
+}
+
 export const TextPane = forwardRef<HTMLDivElement, Props>(
   ({ text, pairedRef, enableHighlight = false, id, onHighlight }, ref) => {
     const localRef = useRef<HTMLDivElement>(null);
@@ -48,11 +59,12 @@ export const TextPane = forwardRef<HTMLDivElement, Props>(
   useEffect(() => {
     const handleScroll = () => {
       if (!pairedRef?.current || !localRef.current) return;
-      const ratio =
-        localRef.current.scrollTop /
-        (localRef.current.scrollHeight - localRef.current.clientHeight);
-      pairedRef.current.scrollTop =
-        ratio * (pairedRef.current.scrollHeight - pairedRef.current.clientHeight);
+      const srcEl = localRef.current as ScrollElement;
+      if (srcEl._isSyncing) {
+        srcEl._isSyncing = false;
+        return;
+      }
+      syncScroll(srcEl, pairedRef.current as ScrollElement);
     };
     const src = localRef.current;
     if (src) {
