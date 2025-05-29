@@ -42,3 +42,13 @@ next-env.d.ts
 
 *.csv
 .test-tmp
+
+# Codex environment files (keep these)
+# .codexrc
+# codex.json 
+# Dockerfile.codex
+# CODEX_SETUP.md
+
+# Temporary Codex files
+/tmp/
+*.log

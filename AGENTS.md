@@ -1,28 +1,67 @@
-# Contributor Guide for cwv-interactive
-
-This document provides guidance for the Codex agent on how to work within the `cwv-interactive` repository.
+# Creative Writing Evaluation Arena - Developer Guide
 
 ## Project Overview
-`cwv-interactive` is a Next.js project using TypeScript. Key directories include:
-- `src/app/`: Contains the main application pages and routes.
-- `src/components/`: Contains reusable UI components.
-- `src/lib/`: Contains utility functions and Supabase client setup.
-- `src/contexts/`: Contains React context providers.
+This is a Next.js 15 application with React 19, TypeScript, and Supabase backend for creative writing evaluation and human vs AI detection research.
 
-## Development Environment Tips
-- This project uses `pnpm` for package management.
-- To install dependencies locally: `pnpm install`
-- To run the development server locally: `pnpm dev`
-- ESLint is configured via `eslint.config.mjs`. Run `pnpm lint` to check for linting issues.
-- TypeScript is used. Run `pnpm typecheck` (script available in `package.json`) for type checking.
+## Development Environment Setup
 
-## Testing Instructions
-- **Linting:** Run `pnpm lint` to ensure code style and quality.
-- **Type Checking:** Run `pnpm typecheck` (script in `package.json` pointing to `tsc --noEmit`) to ensure TypeScript rules pass.
-- (Add instructions for running unit, integration, or end-to-end tests once they are set up. For example, if using Vitest: `pnpm test` or `pnpm vitest run -t "<test_name_pattern>"`).
-- All tests and checks must pass before the agent considers its work complete.
-- The agent should add or update tests for any code it changes.
+### Dependencies
+- Node.js 20+ with pnpm package manager
+- All dependencies are listed in `package.json`
 
-## PR Instructions
-- Title format: `[area_of_change] <Descriptive Title>` (e.g., `[auth] Fix login redirect issue`)
-- Ensure PR descriptions are clear and summarize the changes. 
+### Installation & Setup
+Run the setup script to install dependencies and configure the environment:
+```bash
+chmod +x setup.sh && ./setup.sh
+```
+
+The setup script handles:
+- pnpm installation and configuration
+- Proxy settings for corporate environments  
+- Clean dependency installation with lockfile regeneration
+- Command verification
+
+### Testing & Validation
+Always run these commands before submitting changes:
+```bash
+pnpm lint       # ESLint checks
+pnpm typecheck  # TypeScript validation  
+pnpm test       # Run test suite
+pnpm dev        # Start development server
+```
+
+### Project Structure
+- `src/app/` - Next.js 15 app router pages and API routes
+- `src/components/` - React components with TypeScript
+- `src/lib/` - Utility functions, database clients, AI services
+- `src/contexts/` - React context providers
+- `public/` - Static assets
+
+### Key Technologies
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
+- **Backend**: Next.js API routes, Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **UI Components**: Radix UI primitives
+
+### Environment Variables
+Required in `.env.local`:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`  
+- `OPENAI_API_KEY`
+
+### Code Quality Standards
+- Use TypeScript for all new code
+- Follow ESLint and Prettier configurations
+- Add tests for new features
+- Ensure responsive design with Tailwind CSS
+- Use Supabase RLS policies for data security
+
+### Common Commands
+- `pnpm dev` - Start development server on localhost:3000
+- `pnpm build` - Build for production
+- `pnpm start` - Start production server
+
+### Troubleshooting
+- If dependencies fail to install, the setup script will regenerate lockfiles
+- Check `CODEX_SETUP.md` for detailed troubleshooting
+- Verify environment with `./verify-environment.sh` 
