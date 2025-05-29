@@ -226,3 +226,34 @@ test('gpt-4.1 model configuration and system instructions', async () => {
   const body = await res.json();
   assert.equal(body.text, 'Generated with GPT-4.1.');
 });
+
+test('gpt-4.5 model configuration and system instructions', async () => {
+  const { handleGenerateOpenAI } = loadRoute('src/app/api/generate-openai/route.ts');
+  let captured;
+  const fetchMock = async (url, init) => {
+    captured = JSON.parse(init.body);
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Generated with GPT-4.5 advanced capabilities.' }, finish_reason: 'stop' }] }),
+    };
+  };
+  
+  const res = await handleGenerateOpenAI(fetchMock, { prompt: 'Write an emotionally resonant story', model: 'gpt-4.5' });
+  assert.equal(res.status, 200);
+  
+  // Verify GPT-4.5 model is used
+  assert.equal(captured.model, 'gpt-4.5');
+  
+  // Verify system message contains GPT-4.5 specific instructions
+  const systemMessage = captured.messages.find(m => m.role === 'system');
+  assert.ok(systemMessage, 'System message should be present');
+  assert.ok(systemMessage.content.includes('GPT-4.5'), 'System message should reference GPT-4.5');
+  assert.ok(systemMessage.content.includes('emotional intelligence'), 'System message should emphasize emotional intelligence');
+  assert.ok(systemMessage.content.includes('most sophisticated'), 'System message should highlight advanced capabilities');
+  
+  // Verify default max_tokens is highest for GPT-4.5
+  assert.ok(captured.max_tokens >= 1024, 'GPT-4.5 should have the highest max_tokens default');
+  
+  const body = await res.json();
+  assert.equal(body.text, 'Generated with GPT-4.5 advanced capabilities.');
+});

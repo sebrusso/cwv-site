@@ -26,9 +26,17 @@ export function buildBalancedChatRequest(
   const hi             = Math.round(refWords * 1.05);
   const maxTokens      = Math.ceil(refWords * 1.35) + 50; // buffer
 
+  // Optimize parameters for GPT-4.5's enhanced emotional intelligence and creativity
   // Optimize parameters for GPT-4.1's enhanced instruction following
+  const isGPT45 = model === 'gpt-4.5';
   const isGPT41 = model === 'gpt-4.1';
-  const optimizedParams = isGPT41 ? {
+  
+  const optimizedParams = isGPT45 ? {
+    temperature: 0.75,       // Slightly higher for enhanced creativity
+    top_p: 0.9,             // Broader sampling for emotional intelligence
+    frequency_penalty: 0.05, // Minimal penalty to encourage creative expression
+    presence_penalty: 0.1,   // Moderate penalty for content diversity
+  } : isGPT41 ? {
     temperature: 0.6,        // Lower temperature for better instruction adherence
     top_p: 0.85,            // Slightly more focused sampling
     frequency_penalty: 0.1,  // Reduced to allow for better narrative flow
@@ -40,7 +48,15 @@ export function buildBalancedChatRequest(
     presence_penalty: 0,
   };
 
-  const systemMsg = isGPT41 ? `
+  const systemMsg = isGPT45 ? `
+You are an emotionally intelligent, award-winning author with unparalleled creative vision.
+Write ONE complete, deeply engaging story in exactly *${refParas}* paragraphs.
+Target approximately ${avgParaWords} words per paragraph (±10% creative flexibility).
+Aim for total word count between ${lo} and ${hi} words.
+Focus on rich emotional storytelling, authentic character development, and creative narrative techniques.
+Leverage your superior pattern recognition to create compelling, coherent narratives.
+End with: <|endofstory|>
+  `.trim() : isGPT41 ? `
 You are an exceptional award-winning short-story author with precise narrative control.
 Write ONE complete, engaging story in exactly *${refParas}* paragraphs.
 Target approximately ${avgParaWords} words per paragraph (±10% flexibility).

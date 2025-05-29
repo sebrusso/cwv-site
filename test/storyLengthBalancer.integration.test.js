@@ -35,8 +35,15 @@ const mockStoryLengthBalancer = {
     const maxTokens = Math.ceil(refWords * 1.35) + 50;
 
     // Optimize parameters for GPT-4.1's enhanced instruction following
+    const isGPT45 = model === 'gpt-4.5';
     const isGPT41 = model === 'gpt-4.1';
-    const optimizedParams = isGPT41 ? {
+    
+    const optimizedParams = isGPT45 ? {
+      temperature: 0.75,       // Slightly higher for enhanced creativity
+      top_p: 0.9,             // Broader sampling for emotional intelligence
+      frequency_penalty: 0.05, // Minimal penalty to encourage creative expression
+      presence_penalty: 0.1,   // Moderate penalty for content diversity
+    } : isGPT41 ? {
       temperature: 0.6,        // Lower temperature for better instruction adherence
       top_p: 0.85,            // Slightly more focused sampling
       frequency_penalty: 0.1,  // Reduced to allow for better narrative flow
@@ -48,7 +55,15 @@ const mockStoryLengthBalancer = {
       presence_penalty: 0,
     };
 
-    const systemMsg = isGPT41 ? `
+    const systemMsg = isGPT45 ? `
+You are an emotionally intelligent, award-winning author with unparalleled creative vision.
+Write ONE complete, deeply engaging story in exactly *${refParas}* paragraphs.
+Target approximately ${avgParaWords} words per paragraph (±10% creative flexibility).
+Aim for total word count between ${lo} and ${hi} words.
+Focus on rich emotional storytelling, authentic character development, and creative narrative techniques.
+Leverage your superior pattern recognition to create compelling, coherent narratives.
+End with: <|endofstory|>
+    `.trim() : isGPT41 ? `
 You are an exceptional award-winning short-story author with precise narrative control.
 Write ONE complete, engaging story in exactly *${refParas}* paragraphs.
 Target approximately ${avgParaWords} words per paragraph (±10% flexibility).
@@ -216,6 +231,59 @@ test('story length balancer optimizes parameters for gpt-4.1', async () => {
   // Verify both use the same structure
   assert.equal(gpt41Request.messages.length, 2);
   assert.equal(gpt4oRequest.messages.length, 2);
+  assert.deepEqual(gpt41Request.stop, ['<|endofstory|>']);
+  assert.deepEqual(gpt4oRequest.stop, ['<|endofstory|>']);
+});
+
+test('story length balancer optimizes parameters for gpt-4.5', async () => {
+  const referenceStory = 'A compelling narrative with emotional depth here.\n\nAnother meaningful paragraph with character development.'; // ~15 words, 2 paragraphs
+  
+  // Test GPT-4.5 optimized parameters
+  const gpt45Request = mockStoryLengthBalancer.buildBalancedChatRequest(
+    'Write an emotionally resonant story about love',
+    referenceStory,
+    'gpt-4.5'
+  );
+
+  // Test GPT-4.1 parameters for comparison
+  const gpt41Request = mockStoryLengthBalancer.buildBalancedChatRequest(
+    'Write an emotionally resonant story about love',
+    referenceStory,
+    'gpt-4.1'
+  );
+
+  // Test standard GPT-4o parameters for comparison
+  const gpt4oRequest = mockStoryLengthBalancer.buildBalancedChatRequest(
+    'Write an emotionally resonant story about love',
+    referenceStory,
+    'gpt-4o'
+  );
+
+  // Verify GPT-4.5 uses optimized parameters for enhanced creativity
+  assert.equal(gpt45Request.model, 'gpt-4.5');
+  assert.equal(gpt45Request.temperature, 0.75, 'GPT-4.5 should use higher temperature for creativity');
+  assert.equal(gpt45Request.top_p, 0.9, 'GPT-4.5 should use broader sampling for emotional intelligence');
+  assert.equal(gpt45Request.frequency_penalty, 0.05, 'GPT-4.5 should use minimal frequency penalty for creative expression');
+  assert.equal(gpt45Request.presence_penalty, 0.1, 'GPT-4.5 should use moderate presence penalty for diversity');
+
+  // Verify GPT-4.1 parameters are different (more focused)
+  assert.equal(gpt41Request.temperature, 0.6, 'GPT-4.1 should use lower temperature');
+  assert.equal(gpt41Request.top_p, 0.85, 'GPT-4.1 should use more focused sampling');
+
+  // Verify standard parameters for other models
+  assert.equal(gpt4oRequest.temperature, 0.7, 'GPT-4o should use standard temperature');
+
+  // Verify GPT-4.5 has enhanced emotional intelligence system message
+  assert.ok(gpt45Request.messages[0].content.includes('emotionally intelligent'), 'GPT-4.5 should emphasize emotional intelligence');
+  assert.ok(gpt45Request.messages[0].content.includes('unparalleled creative vision'), 'GPT-4.5 should emphasize creative vision');
+  assert.ok(gpt45Request.messages[0].content.includes('superior pattern recognition'), 'GPT-4.5 should reference pattern recognition capabilities');
+  assert.ok(gpt45Request.messages[0].content.includes('authentic character development'), 'GPT-4.5 should focus on character development');
+  
+  // Verify all use the same structure
+  assert.equal(gpt45Request.messages.length, 2);
+  assert.equal(gpt41Request.messages.length, 2);
+  assert.equal(gpt4oRequest.messages.length, 2);
+  assert.deepEqual(gpt45Request.stop, ['<|endofstory|>']);
   assert.deepEqual(gpt41Request.stop, ['<|endofstory|>']);
   assert.deepEqual(gpt4oRequest.stop, ['<|endofstory|>']);
 }); 
