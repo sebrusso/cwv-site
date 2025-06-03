@@ -56,6 +56,7 @@ pnpm install
 cp .env.example .env.local
 # Fill in your Supabase and OpenAI credentials
 ```
+Make sure `NEXT_PUBLIC_SITE_URL` matches the domain where the app is deployed. This URL should also be set as your Supabase project's **Site URL**.
 
 3. Run the development server:
 ```bash
@@ -63,6 +64,26 @@ pnpm dev
 ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Codex Setup
+
+For developers using [OpenAI Codex](https://platform.openai.com/docs/codex), the environment is configured automatically:
+
+**What Codex needs:**
+- `setup.sh` - Installs dependencies during environment initialization
+- `AGENTS.md` - Provides context about the repository and development workflow
+
+**Codex automatically handles:**
+- Running the setup script during environment initialization  
+- Installing dependencies with proper proxy configuration
+- Setting up Node.js 20 environment with pnpm
+
+**If manual setup is needed:**
+```bash
+chmod +x setup.sh && ./setup.sh
+```
+
+The setup script handles dependency installation, lockfile regeneration, and environment verification.
 
 ### Supabase Setup
 
@@ -116,4 +137,5 @@ Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Supabase Documentation](https://supabase.com/docs)
+- [OpenAI Codex Documentation](https://platform.openai.com/docs/codex)
 - [Complete Project Documentation](DOCUMENTATION.md)

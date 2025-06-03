@@ -6,6 +6,7 @@ import { UserProvider } from "@/contexts/UserContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { NavigationBar } from "@/components/NavigationBar";
 import { OnboardingDebugPanel } from "@/components/OnboardingDebugPanel";
+import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import { config } from "@/config";
 import "./globals.css";
 
@@ -42,7 +43,12 @@ export default function RootLayout({
               <NavigationBar />
               {children}
             </main>
-            {config.debugMode && <OnboardingDebugPanel />}
+            {config.debugMode && (
+              <>
+                <OnboardingDebugPanel />
+                <AuthDebugPanel />
+              </>
+            )}
           </UserProvider>
         </ToastProvider>
       </body>
