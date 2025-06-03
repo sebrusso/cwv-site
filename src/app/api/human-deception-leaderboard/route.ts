@@ -9,7 +9,7 @@ interface HumanEvalRow {
   created_at: string;
 }
 
-async function handleHumanDeceptionLeaderboard(
+export async function handleHumanDeceptionLeaderboard(
   supabase: SupabaseClient,
   start?: string,
   end?: string

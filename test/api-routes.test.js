@@ -18,6 +18,27 @@ function loadRoute(tsPath) {
   const utilsOut = ts.transpileModule(utilsSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
   const utilsPath = path.join(outDir, 'utils.cjs');
   if (!fs.existsSync(utilsPath)) fs.writeFileSync(utilsPath, utilsOut);
+  const authSrc = fs.readFileSync('src/lib/auth-utils.ts', 'utf8');
+  let authOut = ts.transpileModule(authSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  authOut = authOut.replace('@/config', './config.cjs');
+  const authPath = path.join(outDir, 'auth-utils.cjs');
+  fs.writeFileSync(authPath, authOut);
+  const configSrc = fs.readFileSync('src/config.ts', 'utf8');
+  let configOut = ts.transpileModule(configSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  configOut = configOut.replace('disableAuthentication: true', 'disableAuthentication: false');
+  const configPath = path.join(outDir, 'config.cjs');
+  fs.writeFileSync(configPath, configOut);
+  const aiServiceSrc = fs.readFileSync('src/lib/models/aiService.ts', 'utf8');
+  let aiServiceOut = ts.transpileModule(aiServiceSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  aiServiceOut = aiServiceOut
+    .replace('./modelConfig', './modelConfig.cjs')
+    .replace('../utils', './utils.cjs');
+  const aiServicePath = path.join(outDir, 'aiService.cjs');
+  fs.writeFileSync(aiServicePath, aiServiceOut);
+  const modelConfigSrc = fs.readFileSync('src/lib/models/modelConfig.ts', 'utf8');
+  const modelConfigOut = ts.transpileModule(modelConfigSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
+  const modelConfigPath = path.join(outDir, 'modelConfig.cjs');
+  fs.writeFileSync(modelConfigPath, modelConfigOut);
   const sysSrc = fs.readFileSync('src/lib/systemInstructions.ts', 'utf8');
   const sysOut = ts.transpileModule(sysSrc, { compilerOptions: { module: 'commonjs', target: 'es2020' } }).outputText;
   const sysPath = path.join(outDir, 'systemInstructions.cjs');
@@ -26,7 +47,11 @@ function loadRoute(tsPath) {
   // Replace relative imports with the correct path for tests
   compiled = compiled
     .replace('../../../lib/utils', './utils.cjs')
-    .replace('../../../lib/systemInstructions', './systemInstructions.cjs');
+    .replace('../../../lib/systemInstructions', './systemInstructions.cjs')
+    .replace('../../../lib/models/aiService', './aiService.cjs')
+    .replace('../../../lib/models/modelConfig', './modelConfig.cjs')
+    .replace('@/lib/auth-utils', './auth-utils.cjs')
+    .replace('@/config', './config.cjs');
   
   const unique = path.basename(path.dirname(tsPath)) + '-' + path.basename(tsPath);
   const outPath = path.join(outDir, unique + '.cjs');
@@ -102,10 +127,9 @@ test('human-model-evaluations inserts row', async () => {
 test('model-leaderboard aggregates results', async () => {
   const { handleModelLeaderboard } = loadRoute('src/app/api/model-leaderboard/route.ts');
   const supabase = supabaseSelectMock({
-    model_evaluations: [
-      { model_name: 'A', is_correct: true },
-      { model_name: 'A', is_correct: false },
-      { model_name: 'B', is_correct: true },
+    model_comparisons: [
+      { model_a: 'A', model_b: 'B', winner: 'B' },
+      { model_a: 'A', model_b: 'C', winner: 'A' },
     ],
     human_model_evaluations: [
       { model_name: 'A', is_correct: true },
@@ -116,8 +140,8 @@ test('model-leaderboard aggregates results', async () => {
   const res = await handleModelLeaderboard(supabase);
   assert.equal(res.status, 200);
   const body = await res.json();
-  // Leaderboard is sorted by winRate desc, Model B (1.0) should be first, Model A (0.5) second
-  assert.deepEqual(body.map((r) => r.model), ['B', 'A']); 
+  // Leaderboard is sorted by winRate desc
+  assert.deepEqual(body.map((r) => r.model), ['B', 'A', 'C']);
   const modelA = body.find(r => r.model === 'A');
   const modelB = body.find(r => r.model === 'B');
 
@@ -202,7 +226,7 @@ test('model-quality-leaderboard aggregates comparisons', async () => {
 });
 
 test('human-deception-leaderboard aggregates results', async () => {
-  const { handleHumanLeaderboard } = loadRoute('src/app/api/human-deception-leaderboard/route.ts');
+  const { handleHumanDeceptionLeaderboard } = loadRoute('src/app/api/human-deception-leaderboard/route.ts');
   const supabase = supabaseSelectMock({
     human_model_evaluations: [
       { model_name: 'A', guess_correct: false },
@@ -210,7 +234,7 @@ test('human-deception-leaderboard aggregates results', async () => {
       { model_name: 'B', guess_correct: false },
     ],
   });
-  const res = await handleHumanLeaderboard(supabase);
+  const res = await handleHumanDeceptionLeaderboard(supabase);
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.deepEqual(body.map((r) => r.model), ['B', 'A']);

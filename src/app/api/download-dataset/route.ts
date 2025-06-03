@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-async function handleDownloadDataset(supabase: SupabaseClient) {
+export async function handleDownloadDataset(supabase: SupabaseClient) {
   const {
     data: { session },
   } = await supabase.auth.getSession();

@@ -3,14 +3,20 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-async function handleModelLeaderboard(supabase: SupabaseClient) {
-  const { data: modelEvalData, error: modelErr } = await supabase
-    .from('model_evaluations')
-    .select('model_name,is_correct');
+interface ModelComparisonRow {
+  model_a: string;
+  model_b: string;
+  winner: string;
+}
 
-  if (modelErr) {
-    console.error('Error fetching model_evaluations:', modelErr);
-    return NextResponse.json({ error: modelErr.message }, { status: 500 });
+export async function handleModelLeaderboard(supabase: SupabaseClient) {
+  const { data: comparisonData, error: cmpErr } = await supabase
+    .from('model_comparisons')
+    .select('model_a,model_b,winner');
+
+  if (cmpErr) {
+    console.error('Error fetching model_comparisons:', cmpErr);
+    return NextResponse.json({ error: cmpErr.message }, { status: 500 });
   }
 
   const { data: humanEvalData, error: humanErr } = await supabase
@@ -22,42 +28,45 @@ async function handleModelLeaderboard(supabase: SupabaseClient) {
     return NextResponse.json({ error: humanErr.message }, { status: 500 });
   }
 
-  const stats: Record<
-    string,
-    { modelWins: number; totalEvaluations: number; humanDeceptions: number }
-  > = {};
+  const stats: Record<string, { wins: number; losses: number; humanDeceptions: number }> = {};
 
-  // Process model_evaluations
-  for (const row of modelEvalData || []) {
-    const model = row.model_name;
-    if (!stats[model]) {
-      stats[model] = { modelWins: 0, totalEvaluations: 0, humanDeceptions: 0 };
+  // Process model_comparisons
+  for (const row of (comparisonData || []) as ModelComparisonRow[]) {
+    const { model_a: a, model_b: b, winner } = row;
+
+    if (!stats[a]) stats[a] = { wins: 0, losses: 0, humanDeceptions: 0 };
+    if (!stats[b]) stats[b] = { wins: 0, losses: 0, humanDeceptions: 0 };
+
+    if (winner === a) {
+      stats[a].wins++;
+      stats[b].losses++;
+    } else if (winner === b) {
+      stats[b].wins++;
+      stats[a].losses++;
     }
-    if (row.is_correct) {
-      stats[model].modelWins++;
-    }
-    stats[model].totalEvaluations++;
   }
 
   // Process human_model_evaluations
   for (const row of humanEvalData || []) {
     const model = row.model_name;
     if (!stats[model]) {
-      // This case should ideally not happen if a model has human evals but no model evals
-      // but we initialize it to be safe.
-      stats[model] = { modelWins: 0, totalEvaluations: 0, humanDeceptions: 0 };
+      // Initialize if model has human evals but no comparisons yet
+      stats[model] = { wins: 0, losses: 0, humanDeceptions: 0 };
     }
     if (!row.is_correct) { // A human deception means the human guess was incorrect
       stats[model].humanDeceptions++;
     }
   }
 
-  const result = Object.entries(stats).map(([model, s]) => ({
-    model,
-    winRate: s.totalEvaluations ? s.modelWins / s.totalEvaluations : 0,
-    humanDeceptions: s.humanDeceptions,
-    totalEvaluations: s.totalEvaluations,
-  }));
+  const result = Object.entries(stats).map(([model, s]) => {
+    const total = s.wins + s.losses;
+    return {
+      model,
+      winRate: total ? s.wins / total : 0,
+      humanDeceptions: s.humanDeceptions,
+      totalEvaluations: total,
+    };
+  });
 
   result.sort((a, b) => b.winRate - a.winRate);
   return NextResponse.json(result);

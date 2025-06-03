@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { handleApiAuth } from '@/lib/auth-utils';
 
-async function handleContentReport(
+export async function handleContentReport(
   supabase: SupabaseClient,
   payload: { prompt_id: string; reason: string; details?: string },
 ) {

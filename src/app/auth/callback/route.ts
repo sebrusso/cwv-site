@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-async function handleAuthCallback(
+export async function handleAuthCallback(
   supabase: SupabaseClient,
   code: string | null,
   redirect: string | null,
