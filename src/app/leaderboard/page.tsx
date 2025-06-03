@@ -5,8 +5,10 @@ import { LeaderboardTable, TableColumn } from '@/components/LeaderboardTable';
 import {
   sortBySuccessRate,
   sortByWinRate,
+  sortByAccuracy,
   HumanDeceptionEntry,
   QualityEntry,
+  SpeedModeEntry,
 } from '@/lib/leaderboard';
 
 function HumanDeceptionLeaderboard() {
@@ -120,6 +122,48 @@ function ModelComparisonLeaderboard() {
   );
 }
 
+function SpeedModeLeaderboard() {
+  const [entries, setEntries] = useState<SpeedModeEntry[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch('/api/speed-mode-leaderboard');
+        if (res.ok) {
+          const data = await res.json();
+          setEntries(data);
+        }
+      } catch {
+        // ignore errors
+      }
+    };
+    fetchData();
+  }, []);
+
+  const tableData = entries.map((e) => ({ ...e, model: e.username }));
+
+  const columns: TableColumn<(typeof tableData)[number]>[] = [
+    { key: 'model', label: 'Username', sortable: true },
+    { key: 'total_correct', label: 'Correct', sortable: true },
+    { key: 'attempts', label: 'Attempts', sortable: true },
+    {
+      key: 'accuracy',
+      label: 'Accuracy',
+      sortable: true,
+      render: (r) => `${(r.accuracy * 100).toFixed(1)}%`,
+    },
+    { key: 'best_streak', label: 'Best Streak', sortable: true },
+  ];
+
+  return (
+    <LeaderboardTable
+      entries={sortByAccuracy(tableData)}
+      columns={columns}
+      exportName="speed-mode.csv"
+    />
+  );
+}
+
 export default function LeaderboardPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -128,6 +172,7 @@ export default function LeaderboardPage() {
         tabs={[
           { key: 'deception', title: 'Human Deception', content: <HumanDeceptionLeaderboard /> },
           { key: 'quality', title: 'Model vs Model', content: <ModelComparisonLeaderboard /> },
+          { key: 'speed', title: 'Speed Mode', content: <SpeedModeLeaderboard /> },
         ]}
       />
     </div>
