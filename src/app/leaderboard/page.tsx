@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from '@/components/Tabs';
 import { LeaderboardTable, TableColumn } from '@/components/LeaderboardTable';
+import { config } from '@/config';
 import {
   sortBySuccessRate,
   sortByWinRate,
@@ -47,26 +48,28 @@ function HumanDeceptionLeaderboard() {
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2 items-center">
-        <label className="text-sm">
-          Start:
-          <input
-            type="date"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            className="border rounded p-1 ml-1"
-          />
-        </label>
-        <label className="text-sm">
-          End:
-          <input
-            type="date"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            className="border rounded p-1 ml-1"
-          />
-        </label>
-      </div>
+      {config.showLeaderboardDateFilters && (
+        <div className="flex gap-2 items-center">
+          <label className="text-sm">
+            Start:
+            <input
+              type="date"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+              className="border rounded p-1 ml-1"
+            />
+          </label>
+          <label className="text-sm">
+            End:
+            <input
+              type="date"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+              className="border rounded p-1 ml-1"
+            />
+          </label>
+        </div>
+      )}
       <LeaderboardTable
         entries={sortBySuccessRate(entries)}
         columns={columns}
