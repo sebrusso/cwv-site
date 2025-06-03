@@ -23,7 +23,7 @@ declare global {
 
 // Configure auth options based on bypass setting
 const authOptions = shouldBypassAuth() ? {
-  // Disable automatic token refresh and persistence when auth is bypassed
+  // Disable authentication entirely when auth is bypassed
   auth: {
     autoRefreshToken: false,
     persistSession: false,
@@ -31,12 +31,14 @@ const authOptions = shouldBypassAuth() ? {
     flowType: 'implicit' as const,
   }
 } : {
-  // Default auth configuration when auth is enabled
+  // Standard auth configuration with proper PKCE flow
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce' as const,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    storageKey: 'supabase.auth.token'
   }
 }
 
@@ -46,6 +48,7 @@ export const supabase =
 if (process.env.NODE_ENV !== "production") {
   globalThis.supabaseClient = supabase;
   console.log("Supabase client initialized with URL:", supabaseUrl);
+  console.log("Auth bypass enabled:", shouldBypassAuth());
 }
 
 export function useSupabase() {

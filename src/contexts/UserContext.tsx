@@ -185,27 +185,55 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // Only initialize Supabase auth when authentication is enabled
     const initializeAuth = async () => {
       try {
-        // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
+        setIsLoading(true);
+        
+        // Get initial session with error handling
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.warn('Session error during initialization:', sessionError);
+          // Clear any corrupted session data
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setIsLoading(false);
+          return null;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
+        
         if (session?.user) {
-          fetchProfile(session.user.id);
+          await fetchProfile(session.user.id);
         } else {
           setIsLoading(false);
         }
 
-        // Listen for auth changes
+        // Listen for auth changes with better error handling
         const {
           data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('Auth state change:', event, session?.user?.id);
+          
           setSession(session);
           setUser(session?.user ?? null);
+          
           if (session?.user) {
-            fetchProfile(session.user.id);
+            await fetchProfile(session.user.id);
           } else {
             setProfile(null);
             setIsLoading(false);
+          }
+          
+          // Handle specific auth events
+          if (event === 'SIGNED_OUT') {
+            setProfile(null);
+            setIsLoading(false);
+          } else if (event === 'TOKEN_REFRESHED') {
+            console.log('Token refreshed successfully');
+          } else if (event === 'SIGNED_IN') {
+            console.log('User signed in');
           }
         });
 
@@ -213,6 +241,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return { data: { subscription } };
       } catch (error) {
         console.error("Error initializing auth:", error);
+        // Clear any problematic state
+        setSession(null);
+        setUser(null);
+        setProfile(null);
         setIsLoading(false);
         return null;
       }
@@ -300,8 +332,48 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
-      return { error: error as AuthError };
+      // Get the correct site URL for redirects
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+      
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: `${siteUrl}/auth/callback`,
+          data: {
+            // You can add custom user metadata here if needed
+          }
+        }
+      });
+      
+      // In local development, if email confirmation is required but no email service is configured,
+      // Supabase will still create the user but they won't be able to sign in until confirmed
+      if (error) {
+        // Check for common signup errors and provide helpful messages
+        if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+          return { error: { 
+            message: 'An account with this email already exists. Please try signing in instead, or use the forgot password option if you need to reset your password.',
+            code: error.message
+          } as AuthError };
+        } else if (error.message.includes('email')) {
+          return { error: { 
+            message: 'Please enter a valid email address.',
+            code: error.message
+          } as AuthError };
+        } else if (error.message.includes('password')) {
+          return { error: { 
+            message: 'Password requirements not met. Please use at least 6 characters.',
+            code: error.message
+          } as AuthError };
+        }
+        return { error: error as AuthError };
+      }
+      
+      // Log success for debugging
+      console.log('Signup successful:', { user: data.user, session: data.session });
+      
+      return { error: null };
     } catch (err) {
       console.error("Error signing up:", err);
       const error =

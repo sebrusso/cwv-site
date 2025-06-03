@@ -1,0 +1,15 @@
+{
+  "setup": {
+    "script": "./scripts/setup.sh",
+    "timeout": 300
+  },
+  "environment": {
+    "node_version": "20",
+    "package_manager": "pnpm"
+  },
+  "scripts": {
+    "lint": "pnpm lint",
+    "typecheck": "pnpm typecheck", 
+    "test": "pnpm test"
+  }
+} 

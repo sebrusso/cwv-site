@@ -61,20 +61,50 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  try {
+    const {
+      data: { session },
+      error: sessionError
+    } = await supabase.auth.getSession();
 
-  const protectedPaths = ['/', '/model-evaluation', '/human-machine', '/dashboard'];
-  if (protectedPaths.some((p) => request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith(`${p}/`))) {
-    if (!session) {
+    // If there's an auth error, clear cookies and redirect to login
+    if (sessionError) {
+      console.warn('Session error in middleware:', sessionError.message);
+      
+      // Clear auth cookies
+      response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('supabase-auth-token');
+      response.cookies.delete('supabase.auth.token');
+      
+      return response;
+    }
+
+    const protectedPaths = ['/', '/model-evaluation', '/human-machine', '/dashboard'];
+    const isProtectedPath = protectedPaths.some((p) => 
+      request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith(`${p}/`)
+    );
+
+    if (isProtectedPath && !session) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
       return NextResponse.redirect(loginUrl);
     }
-  }
 
-  return response;
+    return response;
+  } catch (error) {
+    console.error('Middleware auth error:', error);
+    
+    // On any auth error, redirect to login
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    
+    // Clear any problematic auth cookies
+    redirectResponse.cookies.delete('supabase-auth-token');
+    redirectResponse.cookies.delete('supabase.auth.token');
+    
+    return redirectResponse;
+  }
 }
 
 export const config = {
