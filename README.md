@@ -56,6 +56,7 @@ pnpm install
 cp .env.example .env.local
 # Fill in your Supabase and OpenAI credentials
 ```
+Make sure `NEXT_PUBLIC_SITE_URL` matches the domain where the app is deployed. This URL should also be set as your Supabase project's **Site URL**.
 
 3. Run the development server:
 ```bash
