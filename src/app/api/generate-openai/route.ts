@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { isValidLength } from '../../../lib/utils';
-import { getSystemInstruction } from '../../../lib/systemInstructions';
+import { buildUnifiedChatRequest, buildBalancedChatRequest } from '../../../lib/ai/unifiedRequestBuilder';
 import { generateText } from '../../../lib/models/aiService';
-import { buildBalancedChatRequest } from '../../../lib/ai/storyLengthBalancer';
+import { getSystemInstruction } from '../../../lib/systemInstructions';
 import { countWords, countParagraphs } from '../../../lib/text-utils.js';
 
 async function handleGenerateOpenAI(
@@ -28,8 +28,13 @@ async function handleGenerateOpenAI(
     let genTokens: number | undefined;
 
     if (referenceStory) {
-      // Use StoryLength-Balancer v1.0 for balanced generation
-      const balancedRequest = buildBalancedChatRequest(prompt, referenceStory, model);
+      // Use unified request builder for reference story-based generation
+      const balancedRequest = buildUnifiedChatRequest({
+        prompt,
+        model,
+        referenceStory,
+        customParams: params
+      });
       
       // Calculate reference story stats for logging
       refWords = countWords(referenceStory);

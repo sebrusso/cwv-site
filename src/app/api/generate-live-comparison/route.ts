@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { truncateToSentence } from '../../../lib/utils';
-import { getSystemInstruction } from '../../../lib/systemInstructions';
+import { buildUnifiedChatRequest } from '../../../lib/ai/unifiedRequestBuilder';
+import { buildSystemInstruction } from '../../../lib/ai/systemInstructionBuilder';
 import { generateText } from '../../../lib/models/aiService';
 import { AVAILABLE_MODELS } from '../../../lib/models/modelConfig';
 
@@ -96,7 +97,7 @@ async function handleGenerateLiveComparison(
   const response_A_text = await generateText(fetch, {
     prompt: sourcePromptText,
     model: MODEL_A_NAME,
-    systemMessage: getSystemInstruction(MODEL_A_NAME),
+    systemMessage: buildSystemInstruction({ model: MODEL_A_NAME }),
     params: {
       temperature: 0.7, // You can vary parameters
       max_tokens: 300,
@@ -112,7 +113,7 @@ async function handleGenerateLiveComparison(
   const response_B_text = await generateText(fetch, {
     prompt: sourcePromptText,
     model: MODEL_B_NAME,
-    systemMessage: getSystemInstruction(MODEL_B_NAME),
+    systemMessage: buildSystemInstruction({ model: MODEL_B_NAME }),
     params: {
       temperature: 0.8, // Slightly different temperature for variety
       max_tokens: 300,

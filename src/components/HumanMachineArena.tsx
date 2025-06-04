@@ -128,7 +128,8 @@ export function HumanMachineArena() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         prompt: row.prompt, 
-        model
+        model,
+        referenceStory: row.chosen  // Use human story as reference for length matching
       }),
     });
     console.log('🤖 API call completed');
