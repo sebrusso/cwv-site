@@ -8,9 +8,8 @@ export interface ModelConfig {
 }
 
 export const MODEL_CONFIGS: ModelConfig[] = [
-  { name: 'gpt-4.5', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 1024 } },
-  { name: 'gpt-4.1', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 512 } },
-  { name: 'gpt-4o', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 256 } },
+  { name: 'gpt-4.5-preview-2025-02-27', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 1024 } },
+  { name: 'gpt-4o', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 512 } },
   { name: 'gpt-4o-mini', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 256 } },
   { name: 'gpt-4-turbo', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 256 } },
   { name: 'gpt-3.5-turbo', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 256 } },
