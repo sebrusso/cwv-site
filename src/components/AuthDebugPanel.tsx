@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/UserContext";
 import { clearAuthState } from "@/lib/auth-utils";
-import { config } from "@/config";
+import { config } from "@/lib/config-client";
 
 export function AuthDebugPanel() {
   const { user, session, profile, isLoading } = useUser();
