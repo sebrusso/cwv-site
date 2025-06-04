@@ -7,7 +7,7 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import { NavigationBar } from "@/components/NavigationBar";
 import { OnboardingDebugPanel } from "@/components/OnboardingDebugPanel";
 import { AuthDebugPanel } from "@/components/AuthDebugPanel";
-import { config } from "@/config";
+import { config } from "@/lib/config-client";
 import "./globals.css";
 
 const geistSans = Geist({

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isValidLength } from '../../../lib/utils';
-import { buildUnifiedChatRequest, buildBalancedChatRequest } from '../../../lib/ai/unifiedRequestBuilder';
+import { buildUnifiedChatRequest } from '../../../lib/ai/unifiedRequestBuilder';
 import { generateText } from '../../../lib/models/aiService';
 import { getSystemInstruction } from '../../../lib/systemInstructions';
 import { countWords, countParagraphs } from '../../../lib/text-utils.js';

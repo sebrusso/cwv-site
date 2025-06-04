@@ -48,14 +48,11 @@ export function buildSystemInstruction(context: SystemInstructionContext): strin
   const analysis = analyzeStory(context.referenceStory);
   
   // Build dynamic instruction based on model capabilities and story analysis
-  return buildDynamicInstruction(context.model, baseInstruction, analysis, context.customParams);
+  return buildDynamicInstruction(analysis);
 }
 
 function buildDynamicInstruction(
-  model: string, 
-  baseInstruction: string, 
-  analysis: StoryAnalysis,
-  customParams?: SystemInstructionContext['customParams']
+  analysis: StoryAnalysis
 ): string {
   // Build unified role prompt
   const rolePrompt = buildUnifiedRolePrompt();
@@ -83,13 +80,6 @@ You understand that good storytelling involves:
 - Proper adherence to any length or formatting requirements
 
 You will craft your story to meet the specified constraints while prioritizing narrative quality and reader engagement.`;
-}
-
-// Keep this function for future per-model customization
-function getModelSpecificRolePrompt(model: string, baseInstruction: string): string {
-  // Future: This could return model-specific role prompts
-  // For now, return the unified prompt for all models
-  return buildUnifiedRolePrompt();
 }
 
 function buildStructuralInstructions(analysis: StoryAnalysis): string {

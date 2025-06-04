@@ -4,7 +4,7 @@ import { useUser } from "@/contexts/UserContext";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { config } from "@/config";
+import { config } from "@/lib/config-client";
 
 export function OnboardingDebugPanel() {
   const { user, profile, isLoading } = useUser();

@@ -1,7 +1,7 @@
 'use client';
 import UserPerformanceCharts from '@/components/UserPerformanceCharts';
 import { notFound } from 'next/navigation';
-import { config } from '@/config';
+import { config } from '@/lib/config-client';
 
 export default function DashboardPage() {
   if (!config.enableDashboard) {

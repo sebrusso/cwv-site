@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { config } from "@/config";
+import { config } from "@/lib/config-client";
 
 export function NavigationBar() {
   const pathname = usePathname();

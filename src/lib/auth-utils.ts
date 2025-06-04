@@ -1,4 +1,4 @@
-import { config } from '@/config';
+import { config } from '@/lib/config-client';
 import { User, Session, SupabaseClient } from '@supabase/supabase-js';
 
 // Mock user data for when authentication is disabled

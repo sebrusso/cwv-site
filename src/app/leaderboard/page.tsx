@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from '@/components/Tabs';
 import { LeaderboardTable, TableColumn } from '@/components/LeaderboardTable';
-import { config } from '@/config';
+import { config } from '@/lib/config-client';
 import {
   sortBySuccessRate,
   sortByWinRate,

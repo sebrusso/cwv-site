@@ -13,7 +13,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 import { ReportContentButton } from "./ReportContentButton";
-import { AVAILABLE_MODELS } from "@/lib/models/modelConfig";
+import { AVAILABLE_MODELS } from "@/lib/models/modelConfig-client";
 import { getRandomPrompt } from "@/lib/prompts";
 
 interface PromptRow {

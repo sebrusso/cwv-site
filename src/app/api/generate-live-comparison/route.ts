@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { truncateToSentence } from '../../../lib/utils';
-import { buildUnifiedChatRequest } from '../../../lib/ai/unifiedRequestBuilder';
+// Note: buildUnifiedChatRequest available for future use
 import { buildSystemInstruction } from '../../../lib/ai/systemInstructionBuilder';
 import { generateText } from '../../../lib/models/aiService';
 import { AVAILABLE_MODELS } from '../../../lib/models/modelConfig';

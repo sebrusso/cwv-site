@@ -1,5 +1,5 @@
 import { AuthDebugPanel } from '@/components/AuthDebugPanel';
-import { config } from '@/config';
+import { config } from '@/lib/config-client';
 import Link from 'next/link';
 
 export default function DevAuthPage() {
