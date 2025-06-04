@@ -10,7 +10,7 @@ let cached: SystemInstructionConfig | null = null;
 
 function loadConfig(): SystemInstructionConfig {
   if (cached) return cached;
-  const filePath = path.join(process.cwd(), 'system-instructions.json');
+  const filePath = path.join(process.cwd(), 'config', 'system-instructions.json');
   const text = fs.readFileSync(filePath, 'utf8');
   cached = JSON.parse(text);
   return cached as SystemInstructionConfig;
