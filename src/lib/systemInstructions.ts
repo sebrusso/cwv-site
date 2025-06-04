@@ -1,22 +1,12 @@
-import fs from 'fs';
-import path from 'path';
+import { getSystemInstruction as getConfigSystemInstruction } from '../../config';
 
+// Legacy interface for backward compatibility
 export interface SystemInstructionConfig {
   default: string;
   models?: Record<string, string>;
 }
 
-let cached: SystemInstructionConfig | null = null;
-
-function loadConfig(): SystemInstructionConfig {
-  if (cached) return cached;
-  const filePath = path.join(process.cwd(), 'config', 'system-instructions.json');
-  const text = fs.readFileSync(filePath, 'utf8');
-  cached = JSON.parse(text);
-  return cached as SystemInstructionConfig;
-}
-
+// Get system instruction for a specific model
 export function getSystemInstruction(model: string): string {
-  const cfg = loadConfig();
-  return (cfg.models && cfg.models[model]) || cfg.default;
+  return getConfigSystemInstruction(model);
 }

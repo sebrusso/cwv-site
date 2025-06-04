@@ -1,3 +1,6 @@
+import { getModelConfigs, getAvailableModels, getModelConfig as getConfigModelConfig, ModelConfig as ConfigModelConfig } from '../../../config';
+
+// Legacy interface for backward compatibility
 export interface ModelConfig {
   name: string;
   provider: 'openai' | 'anthropic' | 'google';
@@ -7,18 +10,26 @@ export interface ModelConfig {
   };
 }
 
-export const MODEL_CONFIGS: ModelConfig[] = [
-  { name: 'gpt-4.5-preview-2025-02-27', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 1024 } },
-  { name: 'gpt-4o', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 512 } },
-  { name: 'gpt-4o-mini', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 256 } },
-  { name: 'gpt-4-turbo', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 256 } },
-  { name: 'gpt-3.5-turbo', provider: 'openai', defaultParams: { temperature: 0.7, max_tokens: 256 } },
-  { name: 'claude-3-opus', provider: 'anthropic', defaultParams: { temperature: 0.7, max_tokens: 256 } },
-  { name: 'gemini-pro', provider: 'google', defaultParams: { temperature: 0.7, max_tokens: 256 } },
-];
-
-export function getModelConfig(name: string): ModelConfig | undefined {
-  return MODEL_CONFIGS.find((m) => m.name === name);
+// Convert new config format to legacy format
+function convertToLegacyFormat(config: ConfigModelConfig): ModelConfig {
+  return {
+    name: config.id,
+    provider: config.provider,
+    defaultParams: {
+      temperature: config.temperature,
+      max_tokens: config.maxTokens,
+    },
+  };
 }
 
-export const AVAILABLE_MODELS = MODEL_CONFIGS.map((m) => m.name);
+// Get all model configurations in legacy format
+export const MODEL_CONFIGS: ModelConfig[] = getModelConfigs().map(convertToLegacyFormat);
+
+// Get specific model configuration by name
+export function getModelConfig(name: string): ModelConfig | undefined {
+  const config = getConfigModelConfig(name);
+  return config ? convertToLegacyFormat(config) : undefined;
+}
+
+// Get all available model names
+export const AVAILABLE_MODELS = getAvailableModels();

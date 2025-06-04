@@ -1,0 +1,162 @@
+{
+  "app": {
+    "name": "Creative Writing Verification Interactive",
+    "version": "1.0.0",
+    "debugMode": false,
+    "environment": "production"
+  },
+  
+  "features": {
+    "authentication": {
+      "enabled": true,
+      "disableForAnonymous": true,
+      "requireEmailConfirmation": false
+    },
+    "dashboard": {
+      "enabled": true,
+      "showLink": true
+    },
+    "leaderboard": {
+      "enabled": true,
+      "showDateFilters": false
+    },
+    "resources": {
+      "enabled": true
+    },
+    "dataset": {
+      "enabled": true,
+      "downloadUrl": null
+    },
+    "ui": {
+      "showHelpButton": true,
+      "enableDarkMode": false,
+      "defaultTheme": "light"
+    }
+  },
+  
+  "models": {
+    "defaultProvider": "openai",
+    "defaultTemperature": 0.7,
+    "defaultMaxTokens": 1024,
+    "configurations": [
+      {
+        "id": "gpt-4.5-preview-2025-02-27",
+        "name": "GPT-4.5 Preview",
+        "provider": "openai",
+        "displayName": "GPT-4.5 (Latest)",
+        "description": "OpenAI's most advanced model with enhanced creative capabilities",
+        "temperature": 0.7,
+        "maxTokens": 1024,
+        "enabled": true,
+        "systemInstruction": "You are an advanced creative writing assistant powered by GPT-4.5, OpenAI's most sophisticated model. You excel at emotional intelligence, creative storytelling, and generating authentic narratives with exceptional accuracy. Leverage your enhanced pattern recognition and reduced hallucination capabilities to craft compelling, emotionally resonant stories that demonstrate superior creative insight and narrative coherence."
+      },
+      {
+        "id": "gpt-4.1-2025-04-14",
+        "name": "GPT-4.1",
+        "provider": "openai",
+        "displayName": "GPT-4.1",
+        "description": "High-quality creative writing with excellent instruction following",
+        "temperature": 0.7,
+        "maxTokens": 1024,
+        "enabled": true,
+        "systemInstruction": "You are an exceptional creative writing assistant powered by GPT-4.1. You excel at following precise instructions, generating high-quality creative content, and adapting your writing style to match specific requirements. Focus on creating engaging, well-structured narratives that capture the essence of the given prompt."
+      },
+      {
+        "id": "gpt-4o",
+        "name": "GPT-4o",
+        "provider": "openai",
+        "displayName": "GPT-4o",
+        "description": "Fast and capable multimodal model",
+        "temperature": 0.7,
+        "maxTokens": 1024,
+        "enabled": true,
+        "systemInstruction": "You are a creative writing assistant powered by GPT-4o. You excel at understanding context and generating engaging creative content. Focus on creating vivid, immersive narratives that capture the reader's attention while maintaining consistency and coherence throughout the story."
+      },
+      {
+        "id": "gpt-4o-mini",
+        "name": "GPT-4o Mini",
+        "provider": "openai",
+        "displayName": "GPT-4o Mini",
+        "description": "Efficient and cost-effective creative writing",
+        "temperature": 0.7,
+        "maxTokens": 1024,
+        "enabled": true,
+        "systemInstruction": "You are a creative writing assistant focused on generating concise, engaging stories. Create compelling narratives that are well-structured and emotionally engaging while being efficient with your word usage."
+      },
+      {
+        "id": "gpt-4-turbo",
+        "name": "GPT-4 Turbo",
+        "provider": "openai",
+        "displayName": "GPT-4 Turbo",
+        "description": "Balanced performance and quality",
+        "temperature": 0.7,
+        "maxTokens": 1024,
+        "enabled": true,
+        "systemInstruction": "You are a creative writing assistant powered by GPT-4 Turbo. Generate creative, well-crafted stories that balance quality with efficiency. Focus on clear storytelling, character development, and engaging plot progression."
+      },
+      {
+        "id": "gpt-3.5-turbo",
+        "name": "GPT-3.5 Turbo",
+        "provider": "openai",
+        "displayName": "GPT-3.5 Turbo",
+        "description": "Fast and reliable creative writing",
+        "temperature": 0.7,
+        "maxTokens": 1024,
+        "enabled": true,
+        "systemInstruction": "You are a creative writing assistant. Generate engaging stories that are well-structured and capture the essence of the given prompt. Focus on clear narrative flow and interesting character interactions."
+      },
+      {
+        "id": "claude-3-opus",
+        "name": "Claude 3 Opus",
+        "provider": "anthropic",
+        "displayName": "Claude 3 Opus",
+        "description": "Anthropic's most capable model for nuanced creative writing",
+        "temperature": 0.7,
+        "maxTokens": 1024,
+        "enabled": false,
+        "systemInstruction": "You are a thoughtful creative writing assistant powered by Claude 3 Opus. You excel at nuanced storytelling, character development, and creating emotionally resonant narratives. Focus on crafting stories with depth, authenticity, and sophisticated narrative techniques."
+      },
+      {
+        "id": "gemini-pro",
+        "name": "Gemini Pro",
+        "provider": "google",
+        "displayName": "Gemini Pro",
+        "description": "Google's advanced language model",
+        "temperature": 0.7,
+        "maxTokens": 1024,
+        "enabled": false,
+        "systemInstruction": "You are a creative writing assistant powered by Gemini Pro. Generate creative, engaging stories that demonstrate strong narrative skills and character development. Focus on creating immersive experiences for readers."
+      }
+    ]
+  },
+  
+  "api": {
+    "rateLimit": {
+      "enabled": true,
+      "maxRequests": 100,
+      "windowMs": 900000
+    },
+    "caching": {
+      "enabled": true,
+      "ttlMs": 300000
+    }
+  },
+  
+  "database": {
+    "maxPromptsPerUser": 50,
+    "enableContentReports": true,
+    "enableDatasetDownloads": true
+  },
+  
+  "analytics": {
+    "enabled": false,
+    "provider": null,
+    "trackingId": null
+  },
+  
+  "security": {
+    "enableCORS": true,
+    "allowedOrigins": ["http://localhost:3000"],
+    "enableRateLimiting": true
+  }
+} 
