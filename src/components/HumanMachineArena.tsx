@@ -94,6 +94,8 @@ export function HumanMachineArena() {
     setPendingSelection(null);
     setPendingSelectionSide(null);
     
+    try {
+    
     let row: PromptRow | null = null;
     if (selectedId === "random") {
       console.log('🎲 Fetching random prompt via util...');
@@ -130,8 +132,34 @@ export function HumanMachineArena() {
       }),
     });
     console.log('🤖 API call completed');
-    const { text } = await aiRes.json();
-    console.log('📝 Response parsed');
+    
+    if (!aiRes.ok) {
+      console.error('❌ API call failed with status:', aiRes.status);
+      const errorData = await aiRes.json();
+      console.error('❌ Error details:', errorData);
+      addToast(`Failed to generate AI story: ${errorData.error || 'Unknown error'}`, "error");
+      setLoading(false);
+      return;
+    }
+    
+    const responseData = await aiRes.json();
+    const { text, error } = responseData;
+    
+    if (error) {
+      console.error('❌ API returned error:', error);
+      addToast(`Failed to generate AI story: ${error}`, "error");
+      setLoading(false);
+      return;
+    }
+    
+    if (!text || text.trim() === '') {
+      console.error('❌ API returned empty text');
+      addToast('AI generated empty text. Please try again.', "error");
+      setLoading(false);
+      return;
+    }
+    
+    console.log('📝 Response parsed successfully');
     setProgress(80);
     console.log('🎭 Setting up texts...');
     const isHumanLeft = Math.random() < 0.5;
@@ -144,6 +172,12 @@ export function HumanMachineArena() {
     // Reset scroll positions
     if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
     if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
+    
+    } catch (error) {
+      console.error('❌ fetchSample failed:', error);
+      addToast(`Failed to generate content: ${error instanceof Error ? error.message : 'Unknown error'}`, "error");
+      setLoading(false);
+    }
   };
 
   const handleSelection = (side: "left" | "right") => {
