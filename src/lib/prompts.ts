@@ -39,5 +39,5 @@ export async function getRandomPrompt(fields = 'id,prompt,chosen', excludeFlagge
 
 export async function getRandomPromptId(excludeFlagged = false) {
   const row = await getRandomPrompt('id', excludeFlagged);
-  return row ? row.id : null;
+  return row && typeof row === 'object' && 'id' in row ? (row as { id: string }).id : null;
 }

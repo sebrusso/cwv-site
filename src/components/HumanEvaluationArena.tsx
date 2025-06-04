@@ -147,7 +147,14 @@ export function HumanEvaluationArena() {
         return;
       }
 
-      const promptData = data;
+      // Type check to ensure data is a WritingPrompt
+      if (typeof data === 'string' || !('id' in data)) {
+        setError("Invalid prompt data. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const promptData = data as WritingPrompt;
       setPrompt(promptData);
       setSelectedText(null);
       setFeedback(null);

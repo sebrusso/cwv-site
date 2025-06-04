@@ -97,7 +97,11 @@ export function HumanMachineArena() {
     let row: PromptRow | null = null;
     if (selectedId === "random") {
       console.log('🎲 Fetching random prompt via util...');
-      row = await getRandomPrompt('id,prompt,chosen', true);
+      const data = await getRandomPrompt('id,prompt,chosen', true);
+      // Type check to ensure data is a valid PromptRow
+      if (data && typeof data === 'object' && 'id' in data) {
+        row = data as PromptRow;
+      }
       console.log('🎲 Random prompt fetched');
     } else {
       console.log('🎯 Fetching specific prompt:', selectedId);

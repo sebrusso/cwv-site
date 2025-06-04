@@ -8,7 +8,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAuthErrorMessage, isDevelopment } from "@/lib/auth-utils";
 
-export function LoginForm() {
+interface LoginFormProps {
+  onClose?: () => void;
+}
+
+export function LoginForm({ onClose }: LoginFormProps = {}) {
   const { signInWithPassword } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,7 +66,11 @@ export function LoginForm() {
         }
       } else {
         // Success - redirect will be handled by the auth context
-        router.push('/dashboard');
+        if (onClose) {
+          onClose();
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (err) {
       console.error("Unexpected login error:", err);
