@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ReportContentButton } from "./ReportContentButton";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { incrementAnonymousEvaluationsCount } from "@/lib/anonymousSession";
 
 
 function similarity(a: string, b: string) {
@@ -343,6 +344,17 @@ export function HumanEvaluationArena() {
           confidenceScore: confidence,
         }),
       });
+      await fetch('/api/activity-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_type: 'evaluation',
+          promptId: prompt.id,
+        }),
+      });
+      if (!user) {
+        void incrementAnonymousEvaluationsCount();
+      }
     } catch (err) {
       console.error('Failed to record quality metrics', err);
     }
