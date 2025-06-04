@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { TextPane } from "@/components/TextPane";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
+import { getAnonymousSessionId } from "@/lib/anonymousSession";
 import { ModelSelector } from "@/components/ModelSelector";
 
 // Supabase client
@@ -87,6 +88,19 @@ export function ModelEvaluationArena() {
   useEffect(() => {
     setIsClientMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      const id = getAnonymousSessionId();
+      if (id) {
+        fetch('/api/anonymous-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: id }),
+        }).catch(() => {});
+      }
+    }
+  }, [user]);
 
   // Fetch available models on mount
   useEffect(() => {
@@ -339,6 +353,21 @@ export function ModelEvaluationArena() {
       });
     } catch (err) {
       console.error('Failed to record quality metrics', err);
+    }
+
+    if (!user) {
+      const sessionId = getAnonymousSessionId();
+      if (sessionId) {
+        try {
+          await fetch('/api/anonymous-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, increment: true }),
+          });
+        } catch (err) {
+          console.error('Failed to update anonymous session', err);
+        }
+      }
     }
   };
 
