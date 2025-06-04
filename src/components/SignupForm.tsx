@@ -74,8 +74,8 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
           </ul>
           {process.env.NODE_ENV === 'development' && (
             <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-              <strong>Development Note:</strong> If you don't receive an email, this is normal in local development. 
-              Your account is created but you'll need to wait for email service configuration or contact an administrator.
+              <strong>Development Note:</strong> If you don&apos;t receive an email, this is normal in local development. 
+              Your account is created but you&apos;ll need to wait for email service configuration or contact an administrator.
             </div>
           )}
         </div>

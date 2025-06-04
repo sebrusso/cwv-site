@@ -47,7 +47,7 @@ export function LoginForm() {
               {isDevelopment() && (
                 <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
                   <strong>Development Note:</strong> Email confirmation emails may not be sent in local development. 
-                  Contact an administrator if you're unable to confirm your account.
+                  Contact an administrator if you&apos;re unable to confirm your account.
                 </div>
               )}
               <div className="mt-2 text-sm">
@@ -110,7 +110,7 @@ export function LoginForm() {
       </Button>
       <div className="text-center space-y-2">
         <p className="text-sm">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/auth/signup" className="underline">
             Sign up
           </Link>

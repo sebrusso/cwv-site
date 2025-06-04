@@ -137,7 +137,7 @@ export function getSiteUrl(): string {
 /**
  * Debug function to log authentication state
  */
-export function logAuthState(context: string, data: any) {
+export function logAuthState(context: string, data: unknown) {
   if (isDevelopment()) {
     console.log(`[AUTH DEBUG - ${context}]:`, data);
   }
@@ -146,10 +146,10 @@ export function logAuthState(context: string, data: any) {
 /**
  * Handle authentication errors with user-friendly messages
  */
-export function getAuthErrorMessage(error: any): string {
+export function getAuthErrorMessage(error: unknown): string {
   if (!error) return '';
   
-  const message = error.message || error.toString();
+  const message = (error as { message?: string }).message || String(error);
   
   // Common error patterns and user-friendly messages
   if (message.includes('Invalid login credentials') || message.includes('Invalid credentials')) {

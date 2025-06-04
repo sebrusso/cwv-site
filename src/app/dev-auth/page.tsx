@@ -63,7 +63,7 @@ export default function DevAuthPage() {
               </code>
             </li>
             <li>Navigate to Authentication → Settings</li>
-            <li>Under "Email Confirmation", toggle off "Enable email confirmations"</li>
+            <li>Under &quot;Email Confirmation&quot;, toggle off &quot;Enable email confirmations&quot;</li>
             <li>Save the changes</li>
             <li>Try creating a new account - it should work immediately!</li>
           </ol>
