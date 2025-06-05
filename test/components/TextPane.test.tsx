@@ -36,6 +36,7 @@ describe("TextPane", () => {
     );
 
     const pane = container.querySelector("[role=\"region\"]");
+    if (!pane) throw new Error("Could not find pane element");
     Object.defineProperties(pane, {
       scrollHeight: { value: 1000 },
       clientHeight: { value: 200 },
@@ -92,6 +93,7 @@ describe("TextPane", () => {
     );
 
     const pane = container.querySelector("[role=\"region\"]");
+    if (!pane) throw new Error("Could not find pane element");
     Object.defineProperties(pane, {
       scrollHeight: { value: 1000 },
       clientHeight: { value: 200 },
