@@ -7,7 +7,8 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import { NavigationBar } from "@/components/NavigationBar";
 import { OnboardingDebugPanel } from "@/components/OnboardingDebugPanel";
 import { AuthDebugPanel } from "@/components/AuthDebugPanel";
-import { config } from "@/lib/config-client";
+import { PageViewLogger } from "@/components/PageViewLogger";
+import { config } from "@/config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -39,6 +40,7 @@ export default function RootLayout({
       >
         <ToastProvider>
           <UserProvider>
+            <PageViewLogger />
             <main className="min-h-screen p-4 sm:p-6 lg:p-8">
               <NavigationBar />
               {children}
