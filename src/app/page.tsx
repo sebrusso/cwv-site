@@ -4,6 +4,7 @@ import { UserProfileButton } from "@/components/UserProfileButton";
 import { UserScoreDisplay } from "@/components/UserScoreDisplay";
 import { HelpButton } from "@/components/HelpButton";
 import { Info } from "lucide-react";
+import { authors } from "@/lib/authors";
 
 // Define a type for our data
 // type VisualizationData = {
@@ -84,6 +85,15 @@ export default async function Home() {
         </div>
 
         <HumanEvaluationArena />
+
+        <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400 space-y-1">
+          <div>
+            Paper Authors: {authors.join(', ')}
+          </div>
+          <div>
+            Project by the Autonomous Agents Lab, Stanford University (PI: Nick Haber)
+          </div>
+        </div>
 
         {/* <div className="mt-12 w-full">
           <h2 className="text-xl font-semibold mb-6 text-center sm:text-left">
