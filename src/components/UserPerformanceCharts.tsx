@@ -14,6 +14,11 @@ interface DashboardData {
   ranking: { position: number; totalUsers: number };
 }
 
+interface SpeedData {
+  bestScore: number;
+  longestStreak: number;
+}
+
 function LineChart({ values }: { values: number[] }) {
   if (values.length === 0) return null;
   const width = 300;
@@ -49,6 +54,7 @@ export default function UserPerformanceCharts() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [speed, setSpeed] = useState<SpeedData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,22 +70,33 @@ export default function UserPerformanceCharts() {
           return;
         }
 
-        const res = await fetch("/api/user-dashboard", {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        });
-        
-        if (res.ok) {
-          const json = await res.json();
+        const [dashRes, speedRes] = await Promise.all([
+          fetch("/api/user-dashboard", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }),
+          fetch("/api/speed-mode", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }),
+        ]);
+
+        if (dashRes.ok) {
+          const json = await dashRes.json();
           setData(json);
         } else {
-          const errorText = await res.text();
-          setError(`Failed to fetch dashboard data: ${res.status} ${errorText}`);
+          const errorText = await dashRes.text();
+          setError(`Failed to fetch dashboard data: ${dashRes.status} ${errorText}`);
+        }
+
+        if (speedRes.ok) {
+          const json = await speedRes.json();
+          setSpeed(json);
+        } else {
+          setSpeed({ bestScore: 0, longestStreak: 0 });
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         setError('An unexpected error occurred while loading your dashboard.');
+        setSpeed({ bestScore: 0, longestStreak: 0 });
       } finally {
         setIsLoading(false);
       }
@@ -97,6 +114,10 @@ export default function UserPerformanceCharts() {
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
           <div className="h-24 bg-gray-200 rounded"></div>
+        </div>
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+          <div className="h-6 bg-gray-200 rounded w-24"></div>
         </div>
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
@@ -179,6 +200,14 @@ export default function UserPerformanceCharts() {
               : "You&apos;re the only user so far!"
             }
           </p>
+        </div>
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold mb-2">Speed Mode</h2>
+        <div className="p-4 border rounded-lg space-y-1">
+          <p className="text-lg">Best Speed Score: {speed?.bestScore ?? 0}</p>
+          <p className="text-lg">Longest Streak: {speed?.longestStreak ?? 0}</p>
+          <a href="/leaderboard#speed" className="px-4 py-2 mt-2 bg-blue-600 text-white rounded hover:bg-blue-700 w-fit inline-block">View Speed Leaderboard</a>
         </div>
       </div>
     </div>
