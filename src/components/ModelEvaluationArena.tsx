@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
 import { ModelSelector } from "@/components/ModelSelector";
 import { getRandomPromptId } from "@/lib/prompts";
+import { logEvent } from "@/lib/eventLogger";
 
 // Supabase client
 
@@ -184,6 +185,11 @@ export function ModelEvaluationArena() {
         selectedModels.modelB,
         promptText || undefined,
       );
+      void logEvent('generate_comparison', {
+        promptId: id,
+        modelA: selectedModels.modelA,
+        modelB: selectedModels.modelB,
+      });
       
       setCurrentDisplayData({
         source_prompt_db_id: liveDataFromApi.prompt_db_id,
@@ -325,6 +331,11 @@ export function ModelEvaluationArena() {
     } catch (err) {
       console.error('Failed to record quality metrics', err);
     }
+
+    void logEvent('evaluation_confirm', {
+      model: selectedModelName,
+      promptId: currentDisplayData.source_prompt_db_id,
+    });
   };
 
   const handleNextPrompt = () => {

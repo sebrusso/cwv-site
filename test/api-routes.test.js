@@ -254,3 +254,16 @@ test('content-report inserts row', async () => {
   assert.equal(res.status, 200);
   assert.deepEqual(inserted, { user_id: 'u1', content_type: 'prompt', content_id: 'p1', reason: 'bad' });
 });
+
+test('log-event inserts row', async () => {
+  let inserted;
+  const { handleLogEvent } = loadRoute('src/app/api/log-event/route.ts');
+  const res = await handleLogEvent(
+    supabaseMock(null, (data) => {
+      inserted = data;
+    }),
+    { eventType: 'click', eventData: { a: 1 } }
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(inserted, { user_id: null, event_type: 'click', event_data: { a: 1 } });
+});

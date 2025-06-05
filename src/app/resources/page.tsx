@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithRetry } from '@/lib/api';
+import { logEvent } from '@/lib/eventLogger';
 
 export default function ResourcesPage() {
   const { user } = useUser();
@@ -31,6 +32,7 @@ export default function ResourcesPage() {
       const res = await fetchWithRetry('/api/download-dataset');
       if (res.ok) {
         const { url } = await res.json();
+        void logEvent('dataset_download');
         window.location.href = url;
       } else if (res.status === 401) {
         alert('Please log in to download.');

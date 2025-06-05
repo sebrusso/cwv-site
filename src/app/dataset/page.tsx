@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
 import { fetchWithRetry } from '@/lib/api';
+import { logEvent } from '@/lib/eventLogger';
 
 export default function DatasetPage() {
   const { user } = useUser();
@@ -18,6 +19,7 @@ export default function DatasetPage() {
       const res = await fetchWithRetry('/api/download-dataset');
       if (res.ok) {
         const { url } = await res.json();
+        void logEvent('dataset_download');
         window.location.href = url;
       } else if (res.status === 401) {
         alert('Please log in to download.');
