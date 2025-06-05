@@ -11,6 +11,7 @@ import { useUser } from "@/contexts/UserContext";
 import { ModelSelector } from "@/components/ModelSelector";
 import { getRandomPromptId } from "@/lib/prompts";
 import { logEvent } from "@/lib/eventLogger";
+import { incrementAnonymousEvaluationsCount } from "@/lib/anonymousSession";
 
 // Supabase client
 
@@ -328,6 +329,18 @@ export function ModelEvaluationArena() {
           confidenceScore: confidence,
         }),
       });
+      await fetch('/api/activity-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_type: 'evaluation',
+          promptId: currentDisplayData.source_prompt_db_id,
+          modelName: selectedModelName,
+        }),
+      });
+      if (!user) {
+        void incrementAnonymousEvaluationsCount();
+      }
     } catch (err) {
       console.error('Failed to record quality metrics', err);
     }
