@@ -189,9 +189,9 @@ test('model-quality-leaderboard aggregates comparisons', async () => {
   );
   const supabase = supabaseSelectMock({
     model_comparisons: [
-      { model_a_name: 'A', model_b_name: 'B', winner: 'A' },
-      { model_a_name: 'A', model_b_name: 'B', winner: 'B' },
-      { model_a_name: 'B', model_b_name: 'C', winner: 'B' },
+      { model_a: 'A', model_b: 'B', winner: 'A' },
+      { model_a: 'A', model_b: 'B', winner: 'B' },
+      { model_a: 'B', model_b: 'C', winner: 'B' },
     ],
   });
   const res = await handleModelQualityLeaderboard(supabase);
