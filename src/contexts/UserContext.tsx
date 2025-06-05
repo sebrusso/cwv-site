@@ -33,7 +33,7 @@ type UserContextType = {
   profile: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
-  signIn: (email: string, redirectPath?: string) => Promise<{ error: AuthError | null }>; // Keep redirectPath for OTP, even if type in main differs, the implementation handles it.
+  signIn: (email: string, redirectPath?: string) => Promise<{ error: AuthError | null }>;
   signInWithPassword: (
     email: string,
     password: string
@@ -323,7 +323,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           console.error('Failed to record login activity', logErr);
         }
       }
-
       return { error: error as AuthError };
     } catch (err) {
       console.error("Error signing in:", err);

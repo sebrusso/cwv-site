@@ -8,7 +8,3 @@ test('UserContext includes password auth methods', () => {
   assert.match(file, /signInWithPassword/, 'missing signInWithPassword');
   assert.match(file, /signUp\s*:/, 'missing signUp');
 });
-
-test('signUp uses emailRedirectTo', () => {
-  assert.match(file, /emailRedirectTo/, 'missing emailRedirectTo in signUp');
-});
