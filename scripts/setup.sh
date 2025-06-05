@@ -8,6 +8,8 @@ set -e  # Exit on any error
 echo "=== Codex Environment Setup ==="
 echo "Node version: $(node --version)"
 echo "pnpm version: $(pnpm --version || echo 'pnpm not found')"
+echo "Python version: $(python3 --version)"
+echo "pip version: $(pip --version)"
 
 # Ensure pnpm is available (Codex universal image should have it)
 if ! command -v pnpm &> /dev/null; then
@@ -35,6 +37,14 @@ else
     rm -f pnpm-lock.yaml
     pnpm install --no-frozen-lockfile
   fi
+fi
+
+# Install Python packages required for auxiliary scripts
+echo "Installing Python dependencies..."
+if [ -f requirements.txt ]; then
+  pip install --no-cache-dir -r requirements.txt
+else
+  pip install --no-cache-dir pandas datasets pyarrow supabase python-dotenv
 fi
 
 # Verify installation

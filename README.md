@@ -83,7 +83,7 @@ For developers using [OpenAI Codex](https://platform.openai.com/docs/codex), the
 chmod +x setup.sh && ./setup.sh
 ```
 
-The setup script handles dependency installation, lockfile regeneration, and environment verification.
+The setup script handles Node.js dependency installation, Python package setup from `requirements.txt`, lockfile regeneration, and environment verification.
 
 ### Supabase Setup
 

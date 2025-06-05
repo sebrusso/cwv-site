@@ -17,9 +17,10 @@ chmod +x setup.sh && ./setup.sh
 
 The setup script handles:
 - pnpm installation and configuration
-- Proxy settings for corporate environments  
+- Proxy settings for corporate environments
 - Clean dependency installation with lockfile regeneration
 - Command verification
+- Python package installation from `requirements.txt`
 
 ### Testing & Validation
 Always run these commands before submitting changes:
