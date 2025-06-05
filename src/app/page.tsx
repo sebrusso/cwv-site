@@ -4,6 +4,7 @@ import { UserProfileButton } from "@/components/UserProfileButton";
 import { UserScoreDisplay } from "@/components/UserScoreDisplay";
 import { HelpButton } from "@/components/HelpButton";
 import { Info } from "lucide-react";
+import ModeCardLinks from "@/components/ModeCardLinks";
 
 // Define a type for our data
 // type VisualizationData = {
@@ -66,11 +67,18 @@ export default async function Home() {
           <h1 className="text-2xl font-medium tracking-tight text-center sm:text-left">
             Creative Writing Evaluation Arena 📝
           </h1>
-          <div className="flex items-center justify-center sm:justify-end gap-3">
-            <UserScoreDisplay mode="human" />
-            <HelpButton mode="human" />
-            <UserProfileButton />
-          </div>
+        <div className="flex items-center justify-center sm:justify-end gap-3">
+          <UserScoreDisplay mode="human" />
+          <HelpButton mode="human" />
+          <UserProfileButton />
+        </div>
+      </div>
+
+        <p className="text-sm text-muted-foreground mb-2">
+          Choose an evaluation mode or jump to your stats.
+        </p>
+        <div className="mb-6">
+          <ModeCardLinks />
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sticky top-0 bg-background dark:bg-gray-950 z-10 py-2 px-1 rounded-md shadow">
