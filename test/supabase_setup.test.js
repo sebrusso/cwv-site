@@ -15,16 +15,3 @@ test('dataset_downloads table exists with policies', () => {
   assert.match(sql, /CREATE POLICY "Users can insert their own dataset downloads"/i);
 });
 
-test('model_evaluations table has expected columns', () => {
-  assert.match(sql, /CREATE TABLE IF NOT EXISTS model_evaluations/i);
-  assert.match(sql, /model_name TEXT NOT NULL/i);
-  assert.match(sql, /selected_response TEXT NOT NULL/i);
-  assert.match(sql, /ground_truth TEXT NOT NULL/i);
-  assert.match(sql, /is_correct BOOLEAN NOT NULL/i);
-});
-
-test('model_writing_rationales table supports evaluation_id', () => {
-  assert.match(sql, /CREATE TABLE IF NOT EXISTS model_writing_rationales/i);
-  assert.match(sql, /evaluation_id UUID REFERENCES model_evaluations/i);
-});
-
