@@ -8,7 +8,7 @@ import { NavigationBar } from "@/components/NavigationBar";
 import { OnboardingDebugPanel } from "@/components/OnboardingDebugPanel";
 import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import { PageViewLogger } from "@/components/PageViewLogger";
-import { config } from "@/config";
+import { serverConfig as config } from "@/lib/server-config";
 import "./globals.css";
 
 const geistSans = Geist({

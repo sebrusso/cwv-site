@@ -1,4 +1,4 @@
-import { getModelConfig as getConfigModelConfig } from '../../../config';
+import { getModelConfig as getConfigModelConfig } from '../server-config';
 import { countWords, countParagraphs } from '../text-utils';
 
 export interface SystemInstructionContext {

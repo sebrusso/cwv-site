@@ -29,8 +29,7 @@ describe("TextPane", () => {
 
     const { container } = render(
       <TextPane
-        text={Array(20).fill("Sample text").join("
-")}
+        text={Array(20).fill("Sample text").join("\n")}
         id="test-pane"
         pairedRef={pairedRef}
       />
@@ -86,8 +85,7 @@ describe("TextPane", () => {
 
     const { container } = render(
       <TextPane
-        text={Array(20).fill("Sample text").join("
-")}
+        text={Array(20).fill("Sample text").join("\n")}
         id="test-pane"
         pairedRef={pairedRef}
       />
@@ -107,8 +105,7 @@ describe("TextPane", () => {
 
   it("shows/hides expand button based on text length", async () => {
     const user = userEvent.setup();
-    const longText = Array(50).fill("Sample text").join("
-");
+    const longText = Array(50).fill("Sample text").join("\n");
 
     const { rerender } = render(
       <TextPane

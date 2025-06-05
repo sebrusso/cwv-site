@@ -1,4 +1,4 @@
-import { getModelConfigs, getAvailableModels, getModelConfig as getConfigModelConfig, ModelConfig as ConfigModelConfig } from '../../../config';
+import { getModelConfigs, getAvailableModels, getModelConfig as getConfigModelConfig, ModelConfig as ConfigModelConfig } from '../server-config';
 
 // Legacy interface for backward compatibility
 export interface ModelConfig {

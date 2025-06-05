@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/router";
+import { usePathname } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 
 export function PageViewLogger() {
-  const router = useRouter();
+  const pathname = usePathname();
   const { user } = useUser();
 
   useEffect(() => {
@@ -21,14 +21,9 @@ export function PageViewLogger() {
       }
     };
 
-    router.events.on("routeChangeComplete", logPageView);
-    // log initial page load
-    logPageView(router.asPath);
-
-    return () => {
-      router.events.off("routeChangeComplete", logPageView);
-    };
-  }, [router, user]);
+    // Log page view when pathname changes
+    logPageView(pathname);
+  }, [pathname, user]);
 
   return null;
 }

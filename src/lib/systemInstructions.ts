@@ -1,4 +1,4 @@
-import { getSystemInstruction as getConfigSystemInstruction } from '../../config';
+import { getSystemInstruction as getConfigSystemInstruction } from './server-config';
 
 // Legacy interface for backward compatibility
 export interface SystemInstructionConfig {

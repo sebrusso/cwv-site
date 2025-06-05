@@ -1,5 +1,5 @@
 import { buildSystemInstruction, getOptimizedParameters } from './systemInstructionBuilder';
-import { getModelConfig as getConfigModelConfig } from '../../../config';
+import { getModelConfig as getConfigModelConfig } from '../server-config';
 
 export interface UnifiedChatRequest {
   model: string;
