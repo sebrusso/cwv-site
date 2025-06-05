@@ -7,7 +7,7 @@ import { handleApiAuth } from '@/lib/auth-utils';
 
 async function handleContentReport(
   supabase: SupabaseClient,
-  payload: { prompt_id: string; reason: string; details?: string },
+  payload: { contentType: string; contentId: string; reason: string },
 ) {
   const { userId, isAuthenticated } = await handleApiAuth(supabase);
 
@@ -17,9 +17,9 @@ async function handleContentReport(
 
   const { error } = await supabase.from('content_reports').insert({
     user_id: userId,
-    prompt_id: payload.prompt_id,
+    content_type: payload.contentType,
+    content_id: payload.contentId,
     reason: payload.reason,
-    details: payload.details,
   });
 
   if (error) {
