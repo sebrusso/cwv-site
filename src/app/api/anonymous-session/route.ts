@@ -9,13 +9,29 @@ const supabase = createClient(
 
 export async function handleAnonymousSession(
   client: SupabaseClient,
-  payload: { sessionId: string; increment?: boolean },
+  payload: { sessionId: string; increment?: boolean; convertedToUserId?: string },
 ) {
-  const { sessionId, increment } = payload;
+  const { sessionId, increment, convertedToUserId } = payload;
   if (!sessionId) {
     return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
   }
 
+  // Handle user conversion
+  if (convertedToUserId) {
+    const { error } = await client
+      .from('anonymous_sessions')
+      .update({ converted_to_user_id: convertedToUserId })
+      .eq('session_id', sessionId);
+
+    if (error) {
+      console.error('Failed to update anonymous session', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  }
+
+  // Handle evaluation count increment
   const { data, error } = await client
     .from('anonymous_sessions')
     .select('evaluations_count')

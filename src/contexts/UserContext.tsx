@@ -311,6 +311,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (!error) {
+        try {
+          await fetch('/api/activity-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'login' }),
+          });
+        } catch (logErr) {
+          console.error('Failed to record login activity', logErr);
+        }
+      }
+
       return { error: error as AuthError };
     } catch (err) {
       console.error("Error signing in:", err);
@@ -336,15 +349,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
                       (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
       
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           emailRedirectTo: `${siteUrl}/auth/callback`,
           data: {
             // You can add custom user metadata here if needed
-          }
-        }
+          },
+        },
       });
       
       // In local development, if email confirmation is required but no email service is configured,
@@ -372,7 +385,39 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       
       // Log success for debugging
       console.log('Signup successful:', { user: data.user, session: data.session });
-      
+
+      try {
+        await fetch('/api/activity-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'signup' }),
+        });
+      } catch (logErr) {
+        console.error('Failed to record signup activity', logErr);
+      }
+
+      const anonId =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('anonymous_session_id') ||
+            document.cookie
+              .split('; ')
+              .find((c) => c.startsWith('anonymous_session_id='))
+              ?.split('=')[1] ||
+            null
+          : null;
+
+      if (anonId && data.user?.id) {
+        try {
+          await fetch('/api/anonymous-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: anonId, convertedToUserId: data.user.id }),
+          });
+        } catch (anonErr) {
+          console.error('Failed to update anonymous session', anonErr);
+        }
+      }
+
       return { error: null };
     } catch (err) {
       console.error("Error signing up:", err);
