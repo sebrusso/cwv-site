@@ -3,6 +3,7 @@ import { WritingTypeToggle } from "@/components/WritingTypeToggle";
 import { UserProfileButton } from "@/components/UserProfileButton";
 import { UserScoreDisplay } from "@/components/UserScoreDisplay";
 import { HelpButton } from "@/components/HelpButton";
+import { SignupCTA } from "@/components/SignupCTA";
 import { Info } from "lucide-react";
 
 // Define a type for our data
@@ -72,6 +73,8 @@ export default async function Home() {
             <UserProfileButton />
           </div>
         </div>
+
+        <SignupCTA />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sticky top-0 bg-background dark:bg-gray-950 z-10 py-2 px-1 rounded-md shadow">
           <div className="text-sm text-muted-foreground text-center sm:text-left flex items-center gap-2">
