@@ -11,7 +11,7 @@ import { useUser } from "@/contexts/UserContext";
 import { ModelSelector } from "@/components/ModelSelector";
 import { getRandomPromptId } from "@/lib/prompts";
 import { logEvent } from "@/lib/eventLogger";
-import { incrementAnonymousEvaluationsCount } from "@/lib/anonymousSession";
+import { incrementAnonymousEvaluationsCount, getAnonymousSessionId } from "@/lib/anonymousSession";
 
 // Supabase client
 
@@ -90,6 +90,19 @@ export function ModelEvaluationArena() {
   useEffect(() => {
     setIsClientMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      const id = getAnonymousSessionId();
+      if (id) {
+        fetch('/api/anonymous-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: id }),
+        }).catch(() => {});
+      }
+    }
+  }, [user]);
 
   // Fetch available models on mount
   useEffect(() => {
