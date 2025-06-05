@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { truncateToSentence } from '../../../lib/utils';
-// Note: buildUnifiedChatRequest available for future use
-import { buildSystemInstruction } from '../../../lib/ai/systemInstructionBuilder';
-import { generateText } from '../../../lib/models/aiService';
+import { generateStory } from '../../../lib/ai/storyGenerationService';
 import { AVAILABLE_MODELS } from '../../../lib/models/modelConfig';
 
 // Initialize Supabase client with the SERVICE ROLE KEY for admin-level operations
@@ -35,12 +32,19 @@ async function handleGenerateLiveComparison(
     prefetch,
     modelA,
     modelB,
+    enhancedOptions,
   }: {
     prompt_db_id?: string;
     prompt_text?: string;
     prefetch?: boolean;
     modelA?: string;
     modelB?: string;
+    enhancedOptions?: {
+      targetLength?: 'short' | 'medium' | 'long';
+      genre?: 'literary' | 'adventure' | 'mystery' | 'romance' | 'sci-fi';
+      tone?: 'dramatic' | 'humorous' | 'suspenseful' | 'heartwarming';
+      complexity?: 'simple' | 'nuanced' | 'complex';
+    };
   },
 ) {
   if (!prompt_db_id && !prompt_text) {
@@ -93,36 +97,28 @@ async function handleGenerateLiveComparison(
   }
 
   const sourcePromptText = promptData.prompt;
-  // 2. Generate response A from OpenAI
-  const response_A_text = await generateText(fetch, {
+  
+  // Generate response A using enhanced story generation service
+  const storyA = await generateStory(fetch, {
     prompt: sourcePromptText,
     model: MODEL_A_NAME,
-    systemMessage: buildSystemInstruction({ model: MODEL_A_NAME }),
-    params: {
-      temperature: 0.7, // You can vary parameters
-      max_tokens: 300,
-      stop: ['\n\n'],
-    },
+    generationType: 'model-vs-model',
+    enhancedInstructions: enhancedOptions
   });
-  const { text: sentenceA } = truncateToSentence(response_A_text);
-  if (!sentenceA) {
-    return NextResponse.json({ error: 'Generation A ended mid-sentence' }, { status: 500 });
-  }
 
-  // 3. Generate response B from OpenAI (could be different model or params)
-  const response_B_text = await generateText(fetch, {
+  // Generate response B using enhanced story generation service
+  const storyB = await generateStory(fetch, {
     prompt: sourcePromptText,
     model: MODEL_B_NAME,
-    systemMessage: buildSystemInstruction({ model: MODEL_B_NAME }),
-    params: {
-      temperature: 0.8, // Slightly different temperature for variety
-      max_tokens: 300,
-      stop: ['\n\n'],
-    },
+    generationType: 'model-vs-model',
+    enhancedInstructions: enhancedOptions
   });
-  const { text: sentenceB } = truncateToSentence(response_B_text);
-  if (!sentenceB) {
-    return NextResponse.json({ error: 'Generation B ended mid-sentence' }, { status: 500 });
+
+  const sentenceA = storyA.text;
+  const sentenceB = storyB.text;
+
+  if (!sentenceA || !sentenceB) {
+    return NextResponse.json({ error: 'Story generation failed' }, { status: 500 });
   }
 
   // 4. Save the generated pair to the 'live_generations' table
@@ -167,11 +163,15 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    // Combine destructuring to include prompt_text from HEAD and other params from main
-    const { prompt_db_id, prompt_text, prefetch, modelA, modelB } = await req.json();
-    // Call handleGenerateLiveComparison, ensuring prompt_text is passed if available
-    // The openai client is no longer passed directly, as aiService handles it.
-    return handleGenerateLiveComparison(supabaseAdmin, { prompt_db_id, prompt_text, prefetch, modelA, modelB });
+    const { prompt_db_id, prompt_text, prefetch, modelA, modelB, enhancedOptions } = await req.json();
+    return handleGenerateLiveComparison(supabaseAdmin, { 
+      prompt_db_id, 
+      prompt_text, 
+      prefetch, 
+      modelA, 
+      modelB, 
+      enhancedOptions 
+    });
   } catch (err) {
     console.error('Overall error in /api/generate-live-comparison:', err);
     const errorMessage = err instanceof Error ? err.message : 'Unknown server error';

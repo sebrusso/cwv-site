@@ -11,7 +11,7 @@ export interface SpeedScorePayload {
   longestStreak: number;
 }
 
-export async function handlePostSpeedScore(
+async function handlePostSpeedScore(
   supabase: SupabaseClient,
   payload: SpeedScorePayload,
 ) {
@@ -19,6 +19,8 @@ export async function handlePostSpeedScore(
   if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  
+  // userId is now either a real user ID or an anonymous session ID
   const { correct, total, durationSeconds, longestStreak } = payload;
   const { error } = await supabase.from('speed_mode_scores').insert({
     user_id: userId,
@@ -34,7 +36,7 @@ export async function handlePostSpeedScore(
   return NextResponse.json({ success: true });
 }
 
-export async function handleSpeedModeLeaderboard(supabase: SupabaseClient) {
+async function handleSpeedModeLeaderboard(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('speed_mode_scores')
     .select('user_id,correct,longest_streak');

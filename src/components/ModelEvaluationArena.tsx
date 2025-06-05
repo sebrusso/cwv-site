@@ -34,17 +34,7 @@ interface LiveEvaluationDisplayData {
   model_B_name: string;
 }
 
-// ModelEvaluation represents a stored evaluation of one model's output
-interface ModelEvaluation {
-  id?: string;
-  user_id: string;
-  prompt_id: string; // ID from the writingprompts-pairwise-test table
-  model_name: string; // Model chosen by the user
-  selected_response: string; // Text of the chosen response
-  ground_truth: string; // For live comparisons we store the chosen text
-  is_correct: boolean; // Always true since choice implies correctness
-  created_at?: string;
-}
+
 
 interface ModelRationale {
   id?: string;
@@ -53,11 +43,27 @@ interface ModelRationale {
   created_at?: string;
 }
 
+interface EnhancementOptions {
+  targetLength: 'short' | 'medium' | 'long';
+  genre: 'literary' | 'adventure' | 'mystery' | 'romance' | 'sci-fi';
+  tone: 'dramatic' | 'humorous' | 'suspenseful' | 'heartwarming';
+  complexity: 'simple' | 'nuanced' | 'complex';
+}
+
 export function ModelEvaluationArena() {
   // Phase state: 'selection' | 'generating' | 'evaluation'
   const [phase, setPhase] = useState<'selection' | 'generating' | 'evaluation'>('selection');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [selectedModels, setSelectedModels] = useState<{ modelA: string; modelB: string } | null>(null);
+  
+  // Enhancement options state
+  const [enhancementOptions, setEnhancementOptions] = useState<EnhancementOptions>({
+    targetLength: 'medium',
+    genre: 'literary',
+    tone: 'dramatic',
+    complexity: 'nuanced'
+  });
+  const [showEnhancements, setShowEnhancements] = useState(false);
   
   const [currentDisplayData, setCurrentDisplayData] = useState<LiveEvaluationDisplayData | null>(null);
   const [responses, setResponses] = useState<{ left: string; right: string }>({ left: "", right: "" });
@@ -131,7 +137,7 @@ export function ModelEvaluationArena() {
   }, []);
 
 
-  const fetchComparison = async (
+  const fetchComparison = useCallback(async (
     id: string | null,
     modelA: string,
     modelB: string,
@@ -147,6 +153,7 @@ export function ModelEvaluationArena() {
         prefetch,
         modelA,
         modelB,
+        enhancedOptions: enhancementOptions,
       }),
     });
     if (!apiResponse.ok) {
@@ -154,7 +161,7 @@ export function ModelEvaluationArena() {
       throw new Error(errData.error || `API request failed with status ${apiResponse.status}`);
     }
     return apiResponse.json();
-  };
+  }, [enhancementOptions]);
 
   const prefetchNextComparison = useCallback(async () => {
     if (!selectedModels) return;
@@ -166,7 +173,7 @@ export function ModelEvaluationArena() {
     } catch (err) {
       console.error("Prefetch error", err);
     }
-  }, [selectedModels]);
+  }, [selectedModels, fetchComparison]);
 
   const generateComparison = async (promptText?: string) => {
     if (!selectedModels) {
@@ -277,8 +284,7 @@ export function ModelEvaluationArena() {
 
     if (user && currentDisplayData.live_generation_id) {
       try {
-        const evaluationData: ModelEvaluation = {
-          user_id: user.id,
+        const evaluationData = {
           prompt_id: currentDisplayData.source_prompt_db_id,
           model_name: selectedModelName,
           selected_response: selectedActualText,
@@ -288,19 +294,19 @@ export function ModelEvaluationArena() {
 
         console.log("Saving live evaluation data:", JSON.stringify(evaluationData, null, 2));
 
-        const { data: savedEval, error } = await supabase
-          .from("model_evaluations")
-          .insert(evaluationData)
-          .select("id") // select id to use for rationale
-          .single();
+        const response = await fetch('/api/model-evaluations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(evaluationData),
+        });
 
-        if (error) {
-          // Handle potential duplicate errors if user somehow re-submits for the exact same live_generation_id
-          // This is less likely with UUIDs for live_generation_id compared to auto-incrementing prompt IDs
-          console.error("Error saving live evaluation:", error);
+        const result = await response.json();
+
+        if (!response.ok) {
+          console.error("Error saving live evaluation:", result);
           setError("Failed to save your evaluation. Please try again.");
-        } else if (savedEval) {
-          console.log("Live evaluation saved, ID:", savedEval.id);
+        } else if (result.success) {
+          console.log("Live evaluation saved, ID:", result.id);
 
           // record comparison result
           try {
@@ -318,7 +324,7 @@ export function ModelEvaluationArena() {
             console.error("Failed to save comparison", cmpErr);
           }
 
-          setCurrentEvaluationId(savedEval.id);
+          setCurrentEvaluationId(result.id);
           setShowRationale(true); // Prompt for rationale after successful save
         }
       } catch (err) {
@@ -404,7 +410,6 @@ export function ModelEvaluationArena() {
       const insertData = {
         evaluation_id: rationaleData.evaluation_id,
         rationale: rationaleData.rationale,
-        user_id: user.id,
         prompt_id: currentDisplayData.source_prompt_db_id,
         model_name: selectedModelName,
         selected_response: selectedResponseFullText,
@@ -412,8 +417,14 @@ export function ModelEvaluationArena() {
         is_correct: true,
       };
 
-      const { error } = await supabase.from('model_writing_rationales').insert(insertData);
-      if (error) throw error;
+      const response = await fetch('/api/model-writing-rationales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(insertData),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to save rationale');
       
       console.log("Rationale saved for evaluation ID:", currentEvaluationId);
       setShowRationale(false);
@@ -465,6 +476,96 @@ export function ModelEvaluationArena() {
           <ModelSelector models={availableModels} onSelect={handleModelSelection} />
         ) : (
           <div className="text-center p-10">Loading available models...</div>
+        )}
+
+        {/* Enhancement Options */}
+        {selectedModels && (
+          <div className="w-full max-w-2xl">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Story Enhancement Options</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowEnhancements(!showEnhancements)}
+                  className="text-xs"
+                >
+                  {showEnhancements ? 'Hide' : 'Show'} Options
+                </Button>
+              </div>
+              
+              {showEnhancements && (
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  {/* Length */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Story Length
+                    </label>
+                    <select
+                      value={enhancementOptions.targetLength}
+                      onChange={(e) => setEnhancementOptions(prev => ({ ...prev, targetLength: e.target.value as EnhancementOptions['targetLength'] }))}
+                      className="w-full p-1.5 text-xs border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                    >
+                      <option value="short">Short (150-250 words)</option>
+                      <option value="medium">Medium (300-500 words)</option>
+                      <option value="long">Long (500-800 words)</option>
+                    </select>
+                  </div>
+
+                  {/* Genre */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Genre Style
+                    </label>
+                    <select
+                      value={enhancementOptions.genre}
+                      onChange={(e) => setEnhancementOptions(prev => ({ ...prev, genre: e.target.value as EnhancementOptions['genre'] }))}
+                      className="w-full p-1.5 text-xs border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                    >
+                      <option value="literary">Literary Fiction</option>
+                      <option value="adventure">Adventure</option>
+                      <option value="mystery">Mystery</option>
+                      <option value="romance">Romance</option>
+                      <option value="sci-fi">Science Fiction</option>
+                    </select>
+                  </div>
+
+                  {/* Tone */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Tone
+                    </label>
+                    <select
+                      value={enhancementOptions.tone}
+                      onChange={(e) => setEnhancementOptions(prev => ({ ...prev, tone: e.target.value as EnhancementOptions['tone'] }))}
+                      className="w-full p-1.5 text-xs border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                    >
+                      <option value="dramatic">Dramatic</option>
+                      <option value="humorous">Humorous</option>
+                      <option value="suspenseful">Suspenseful</option>
+                      <option value="heartwarming">Heartwarming</option>
+                    </select>
+                  </div>
+
+                  {/* Complexity */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Complexity
+                    </label>
+                    <select
+                      value={enhancementOptions.complexity}
+                      onChange={(e) => setEnhancementOptions(prev => ({ ...prev, complexity: e.target.value as EnhancementOptions['complexity'] }))}
+                      className="w-full p-1.5 text-xs border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                    >
+                      <option value="simple">Simple & Clear</option>
+                      <option value="nuanced">Nuanced</option>
+                      <option value="complex">Complex & Layered</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {selectedModels && (

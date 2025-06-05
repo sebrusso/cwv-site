@@ -1,5 +1,5 @@
 import { buildSystemInstruction, getOptimizedParameters } from './systemInstructionBuilder';
-import { getModelConfig as getConfigModelConfig } from '../server-config';
+import { getServerConfig } from '../server-config';
 
 export interface UnifiedChatRequest {
   model: string;
@@ -45,9 +45,9 @@ export function buildUnifiedChatRequest(context: GenerationContext): UnifiedChat
   // Get optimized parameters for the model
   const optimizedParams = getOptimizedParameters(context.model);
   
-  // Determine max_tokens from model config or default to 1024
-  const modelConfig = getConfigModelConfig(context.model);
-  const maxTokens = context.customParams?.max_tokens || modelConfig?.maxTokens || 1024;
+  // Determine max_tokens from global config
+  const config = getServerConfig();
+  const maxTokens = context.customParams?.max_tokens || config.models.defaultMaxTokens;
   
   // Override with custom parameters if provided
   const finalParams = {

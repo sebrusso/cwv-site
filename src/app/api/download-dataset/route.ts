@@ -2,20 +2,22 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { handleApiAuth } from '@/lib/auth-utils';
 
 async function handleDownloadDataset(supabase: SupabaseClient) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+  const { userId, isAuthenticated } = await handleApiAuth(supabase);
+  
+  if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  
   const url = process.env.DATASET_URL;
   if (!url) {
     return NextResponse.json({ error: 'Dataset URL not configured' }, { status: 500 });
   }
-  // Record the download but ignore any errors
-  await supabase.from('dataset_downloads').insert({ user_id: session.user.id });
+  
+  // Record the download with either real user ID or anonymous session ID
+  await supabase.from('dataset_downloads').insert({ user_id: userId });
   return NextResponse.json({ url });
 }
 

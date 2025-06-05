@@ -49,6 +49,7 @@ async function handleEvaluationQuality(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // userId is now either a real user ID or an anonymous session ID
   const { error } = await supabase.from('evaluation_quality_metrics').insert({
     user_id: userId,
     evaluation_time: payload.evaluationTime,

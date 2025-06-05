@@ -14,11 +14,13 @@ async function handleHumanModelEvaluation(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // userId is now either a real user ID or an anonymous session ID
   const { error } = await supabase.from('human_model_evaluations').insert({
     user_id: userId,
     prompt_id,
     model_name,
     guess_correct: is_correct,
+    is_correct: is_correct, // Also populate the is_correct field for compatibility
   });
 
   if (error) {

@@ -1,12 +1,16 @@
-import { postJsonWithRetry } from './api';
-
-export async function logEvent(eventType: string, eventData?: unknown) {
+export const logEvent = async (eventType: string, eventData?: unknown) => {
+  // Always log events, using anonymous session ID when auth is disabled
   try {
-    await postJsonWithRetry('/api/log-event', {
-      eventType,
-      eventData,
+    const response = await fetch('/api/log-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType, eventData }),
     });
-  } catch (err) {
-    console.error('Failed to log event', err);
+    
+    if (!response.ok) {
+      console.error('Failed to log event:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error logging event:', error);
   }
-}
+};

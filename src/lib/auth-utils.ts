@@ -1,5 +1,6 @@
 import { config } from '@/lib/config-client';
 import { User, Session, SupabaseClient } from '@supabase/supabase-js';
+import { getAnonymousSessionId } from './anonymousSession';
 
 // Mock user data for when authentication is disabled
 export const MOCK_USER_ID = 'mock-user-id';
@@ -45,6 +46,35 @@ export const shouldBypassAuth = () => {
   return config.disableAuthentication;
 };
 
+/**
+ * Get an effective user ID for server-side API calls
+ * Returns anonymous session ID for client-side or generates one for server-side
+ */
+export const getEffectiveUserIdForServer = (): string => {
+  if (shouldBypassAuth()) {
+    // Try to get client-side session ID first
+    const clientSessionId = getAnonymousSessionId();
+    if (clientSessionId) {
+      return clientSessionId;
+    }
+    
+    // For server-side calls, generate a temporary session ID
+    // This will be replaced by client-side session management in practice
+    return `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+  return MOCK_USER_ID; // Fallback, shouldn't be reached
+};
+
+/**
+ * Get the effective user ID - either real user ID or anonymous session ID
+ */
+export const getEffectiveUserId = (): string | null => {
+  if (shouldBypassAuth()) {
+    return getAnonymousSessionId();
+  }
+  return null; // Will be handled by normal auth flow
+};
+
 export const getMockAuthData = () => {
   if (!shouldBypassAuth()) {
     return { user: null, session: null, profile: null };
@@ -86,10 +116,10 @@ export const clearAuthState = () => {
   }
 };
 
-// Helper function for API routes to get user ID (real or mock)
+// Helper function for API routes to get user ID (real or anonymous session ID)
 export const getUserIdForApi = async (supabase: SupabaseClient): Promise<string | null> => {
   if (shouldBypassAuth()) {
-    return MOCK_USER_ID;
+    return getEffectiveUserIdForServer();
   }
 
   const {
@@ -102,7 +132,8 @@ export const getUserIdForApi = async (supabase: SupabaseClient): Promise<string 
 // Helper function for API routes to handle authentication
 export const handleApiAuth = async (supabase: SupabaseClient): Promise<{ userId: string | null; isAuthenticated: boolean }> => {
   if (shouldBypassAuth()) {
-    return { userId: MOCK_USER_ID, isAuthenticated: true };
+    const anonymousId = getEffectiveUserIdForServer();
+    return { userId: anonymousId, isAuthenticated: true }; // Treat anonymous sessions as "authenticated"
   }
 
   const {

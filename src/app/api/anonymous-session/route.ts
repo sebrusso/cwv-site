@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!,
 );
 
-export async function handleAnonymousSession(
+async function handleAnonymousSession(
   client: SupabaseClient,
   payload: { sessionId: string; increment?: boolean; convertedToUserId?: string },
 ) {

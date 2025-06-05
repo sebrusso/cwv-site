@@ -12,9 +12,8 @@ export interface ModelConfig {
   displayName: string;
   description: string;
   temperature: number;
-  maxTokens: number;
   enabled: boolean;
-  systemInstruction: string;
+  customSystemInstruction: string | null;
 }
 
 export interface ServerAppConfig {
@@ -55,6 +54,7 @@ export interface ServerAppConfig {
     defaultProvider: string;
     defaultTemperature: number;
     defaultMaxTokens: number;
+    defaultSystemInstruction: string;
     configurations: ModelConfig[];
   };
   api: {
@@ -134,7 +134,8 @@ export function getAvailableModels(): string[] {
 
 export function getSystemInstruction(modelId: string): string {
   const model = getModelConfig(modelId);
-  return model?.systemInstruction || getServerConfig().models.configurations.find(m => m.id === 'gpt-4o')?.systemInstruction || 'You are a creative writing assistant.';
+  const config = getServerConfig();
+  return model?.customSystemInstruction || config.models.defaultSystemInstruction || 'You are a creative writing assistant.';
 }
 
 // Legacy interface for backward compatibility in server-side code

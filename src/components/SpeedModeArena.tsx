@@ -21,12 +21,17 @@ interface PromptRow {
 
 
 const DURATION = 120; // seconds
-const DEFAULT_MODEL = "gpt-4o";
+const MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo", "claude-3-opus", "claude-3-sonnet"];
 
 export function SpeedModeArena() {
+  // Game state management
+  const [gameState, setGameState] = useState<'setup' | 'loading' | 'playing' | 'finished'>('setup');
+  const [selectedModel, setSelectedModel] = useState<string>(MODELS[0]);
+  
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null);
+  const [currentPrompt, setCurrentPrompt] = useState<string>("");
   const [texts, setTexts] = useState<{ left: string; right: string }>({
     left: "",
     right: "",
@@ -46,6 +51,10 @@ export function SpeedModeArena() {
   const [totalGuesses, setTotalGuesses] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
+  
+  // Prefetching state
+  const [prefetchedSamples, setPrefetchedSamples] = useState<PromptRow[]>([]);
+  const [prefetchedTexts, setPrefetchedTexts] = useState<{[key: string]: string}>({});
 
   // Add refs for synchronized scrolling
   const leftTextRef = useRef<HTMLDivElement>(null);
@@ -55,9 +64,7 @@ export function SpeedModeArena() {
   const { user, isLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
-  useEffect(() => {
-    fetchSample().catch((err) => console.error(err));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Don't auto-initialize - wait for user to start the game
 
   useEffect(() => {
     if (!timerActive) return;
@@ -84,6 +91,84 @@ export function SpeedModeArena() {
     );
   }
 
+  const startGame = async () => {
+    console.log('🏁 Starting speed mode game...');
+    setGameState('loading');
+    setTimeLeft(DURATION);
+    setCorrectCount(0);
+    setTotalGuesses(0);
+    setCurrentStreak(0);
+    setLongestStreak(0);
+    
+    // Start prefetching in the background
+    prefetchSamples();
+    
+    // Load the first sample
+    await fetchSample();
+    
+    // Once first sample is ready, start the timer and set to playing
+    setGameState('playing');
+    setTimerActive(true);
+  };
+
+  const prefetchSamples = async () => {
+    console.log('🔄 Starting prefetch...');
+    try {
+      // Fetch multiple prompts to prefill
+      const { data: flagged } = await supabase
+        .from("content_reports")
+        .select("content_id")
+        .eq("content_type", "prompt")
+        .eq("resolved", false);
+      
+      const excluded = (flagged || []).map((r) => r.content_id);
+      let query = supabase
+        .from("writingprompts-pairwise-test")
+        .select("id,prompt,chosen")
+        .limit(10); // Prefetch 10 samples
+      
+      if (excluded.length > 0) {
+        query = query.not("id", "in", `(${excluded.join(",")})`);
+      }
+      
+      const { data } = await query.order("id", { ascending: Math.random() > 0.5 });
+      
+      if (data && data.length > 0) {
+        setPrefetchedSamples(data);
+        
+        // Generate AI responses using bulk API for better performance
+        try {
+          const bulkResponse = await fetch("/api/speed-mode-bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompts: data.slice(0, 5).map(p => ({ id: p.id, prompt: p.prompt })), // Limit to 5 for efficiency
+              model: selectedModel,
+            }),
+          });
+          
+          const bulkResult = await bulkResponse.json();
+          const newPrefetchedTexts: {[key: string]: string} = {};
+          
+          if (bulkResult.success && bulkResult.responses) {
+            bulkResult.responses.forEach((response: { id: string; text: string; success: boolean }) => {
+              if (response.success && response.text) {
+                newPrefetchedTexts[response.id] = response.text;
+              }
+            });
+          }
+        
+          setPrefetchedTexts(prev => ({ ...prev, ...newPrefetchedTexts }));
+          console.log('🔄 Prefetch completed:', Object.keys(newPrefetchedTexts).length, 'samples');
+        } catch (bulkErr) {
+          console.error('Failed to bulk prefetch:', bulkErr);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to prefetch samples:', err);
+    }
+  };
+
   const fetchSample = async () => {
     console.log('🚀 fetchSample started');
     setLoading(true);
@@ -92,14 +177,24 @@ export function SpeedModeArena() {
     setSelectedText(null);
     setTexts({ left: "", right: "" });
     setCurrentPromptId(null);
+    setCurrentPrompt("");
     setPendingSelection(null);
     setPendingSelectionSide(null);
 
-    if (!timerActive) {
-      setTimerActive(true);
-    }
+    // Timer will be started by startGame() function
     
     let row: PromptRow | null = null;
+    
+    // Try to use prefetched samples first - only use samples that have AI responses
+    const samplesWithAI = prefetchedSamples.filter(sample => prefetchedTexts[sample.id]);
+    if (samplesWithAI.length > 0) {
+      console.log('🎯 Using prefetched sample with AI response...');
+      const randomIndex = Math.floor(Math.random() * samplesWithAI.length);
+      row = samplesWithAI[randomIndex];
+      // Remove this sample from both prefetched lists
+      setPrefetchedSamples(prev => prev.filter(sample => sample.id !== row!.id));
+      console.log(`📦 Remaining prefetched: ${prefetchedSamples.length - 1} samples, ${Object.keys(prefetchedTexts).length - 1} AI responses`);
+    } else {
       console.log('📋 Fetching flagged content...');
       const { data: flagged } = await supabase
         .from("content_reports")
@@ -120,6 +215,7 @@ export function SpeedModeArena() {
       const { data } = await query.order("id", { ascending: Math.random() > 0.5 });
       console.log('🎲 Random prompt fetched');
       if (data && data.length > 0) row = data[0];
+    }
     if (!row) {
       console.log('❌ No prompt found');
       setLoading(false);
@@ -127,22 +223,39 @@ export function SpeedModeArena() {
     }
     console.log('✅ Prompt ready, calling API...');
     setCurrentPromptId(row.id);
+    setCurrentPrompt(row.prompt);
     setProgress(60);
-    const aiRes = await fetch("/api/generate-openai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: row.prompt,
-        model: DEFAULT_MODEL,
-      }),
-    });
-    console.log('🤖 API call completed');
-    const { text } = await aiRes.json();
-    console.log('📝 Response parsed');
+    
+    // Check if we already have AI text for this prompt
+    let aiText = prefetchedTexts[row.id];
+    if (!aiText) {
+      console.log('⚡ No prefetched AI response, generating live...');
+      const aiRes = await fetch("/api/generate-openai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: row.prompt,
+          model: selectedModel,
+        }),
+      });
+      console.log('🤖 API call completed');
+      const result = await aiRes.json();
+      aiText = result.text;
+      console.log('📝 Response parsed');
+    } else {
+      console.log('📝 Using prefetched response');
+      // Remove the used AI response from cache
+      setPrefetchedTexts(prev => {
+        const newTexts = { ...prev };
+        delete newTexts[row.id];
+        return newTexts;
+      });
+    }
+    
     setProgress(80);
     console.log('🎭 Setting up texts...');
     const isHumanLeft = Math.random() < 0.5;
-    setTexts({ left: isHumanLeft ? row.chosen : text, right: isHumanLeft ? text : row.chosen });
+    setTexts({ left: isHumanLeft ? row.chosen : aiText, right: isHumanLeft ? aiText : row.chosen });
     setMapping({ left: isHumanLeft ? "human" : "ai", right: isHumanLeft ? "ai" : "human" });
     setProgress(100);
     setLoading(false);
@@ -193,7 +306,7 @@ export function SpeedModeArena() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             promptId: currentPromptId,
-            modelName: DEFAULT_MODEL,
+            modelName: selectedModel,
             guessCorrect: isCorrect,
           }),
         });
@@ -210,6 +323,11 @@ export function SpeedModeArena() {
     setTimeout(() => {
       handleNextSample();
       fetchSample();
+      
+      // If we're running low on prefetched samples, fetch more
+      if (prefetchedSamples.length <= 2) {
+        prefetchSamples();
+      }
     }, 800);
   };
 
@@ -218,6 +336,7 @@ export function SpeedModeArena() {
     setResult(null);
     setTexts({ left: "", right: "" });
     setCurrentPromptId(null);
+    setCurrentPrompt("");
     setPendingSelection(null);
     setPendingSelectionSide(null);
     // Reset scroll positions
@@ -227,6 +346,7 @@ export function SpeedModeArena() {
 
   async function handleSessionEnd() {
     setTimerActive(false);
+    setGameState('finished');
     try {
       await fetch("/api/speed-mode", {
         method: "POST",
@@ -243,19 +363,137 @@ export function SpeedModeArena() {
     }
   }
 
+  const resetGame = () => {
+    setGameState('setup');
+    setTimeLeft(DURATION);
+    setTimerActive(false);
+    setCorrectCount(0);
+    setTotalGuesses(0);
+    setCurrentStreak(0);
+    setLongestStreak(0);
+    setTexts({ left: "", right: "" });
+    setCurrentPrompt("");
+    setCurrentPromptId(null);
+    setResult(null);
+    setSelectedText(null);
+    setPendingSelection(null);
+    setPendingSelectionSide(null);
+    setPrefetchedSamples([]);
+    setPrefetchedTexts({});
+  };
+
+  // Setup screen
+  if (gameState === 'setup') {
+    return (
+      <div className="flex flex-col gap-6 items-center max-w-2xl mx-auto">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Speed Mode Challenge ⚡</h2>
+          <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg mb-6">
+            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+              <strong>How it works:</strong>
+            </p>
+            <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1 text-left">
+              <li>• You have {DURATION} seconds to evaluate as many pairs as possible</li>
+              <li>• Guess which story was written by a human vs AI</li>
+              <li>• Earn points for correct guesses and build streaks</li>
+              <li>• Stories auto-advance after each selection</li>
+            </ul>
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2">Choose AI Model to Compete Against:</label>
+            <select 
+              value={selectedModel} 
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="border p-2 rounded-md w-48"
+            >
+              {MODELS.map((model) => (
+                <option key={model} value={model}>{model}</option>
+              ))}
+            </select>
+          </div>
+          
+          <Button 
+            onClick={startGame} 
+            size="lg"
+            className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3"
+          >
+            Start Challenge
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Finished screen
+  if (gameState === 'finished') {
+    return (
+      <div className="flex flex-col gap-6 items-center max-w-2xl mx-auto text-center">
+        <h2 className="text-2xl font-bold">Challenge Complete! 🎉</h2>
+        <div className="bg-green-50 dark:bg-green-950 p-6 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-green-600">{correctCount}</div>
+              <div className="text-sm text-gray-600">Correct</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-blue-600">{totalGuesses}</div>
+              <div className="text-sm text-gray-600">Total</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-purple-600">{longestStreak}</div>
+              <div className="text-sm text-gray-600">Best Streak</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-orange-600">
+                {totalGuesses > 0 ? Math.round((correctCount / totalGuesses) * 100) : 0}%
+              </div>
+              <div className="text-sm text-gray-600">Accuracy</div>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button onClick={resetGame} variant="outline">
+            Play Again
+          </Button>
+          <Button onClick={() => window.location.reload()}>
+            Back to Regular Mode
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Game screen (loading or playing)
   return (
     <div className="flex flex-col gap-4 items-center">
       {loading && <Progress value={progress} className="w-full" />}
-      <div className="flex flex-wrap gap-4 items-center justify-center">
-        <div className="font-medium">Time Left: {timeLeft}s</div>
-        <div className="font-medium">Streak: {currentStreak}</div>
-        <div className="font-medium">Longest: {longestStreak}</div>
-        <div className="font-medium">
-          Score: {correctCount}/{totalGuesses}
+      {gameState === 'playing' && (
+        <div className="flex flex-wrap gap-4 items-center justify-center">
+          <div className="font-medium">Time Left: {timeLeft}s</div>
+          <div className="font-medium">Streak: {currentStreak}</div>
+          <div className="font-medium">Longest: {longestStreak}</div>
+          <div className="font-medium">
+            Score: {correctCount}/{totalGuesses}
+          </div>
         </div>
-      </div>
+      )}
       
-      {texts.left && (
+      {currentPrompt && (gameState === 'loading' || gameState === 'playing') && (
+        <div className="w-full mb-4">
+          <div className="text-sm font-medium text-blue-600 mb-1">
+            Prompt:
+          </div>
+          <div className="relative pl-4">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-blue-500 rounded-full"></div>
+            <h2 className="text-base font-normal leading-relaxed text-gray-700 dark:text-gray-300">
+              {currentPrompt}
+            </h2>
+          </div>
+        </div>
+      )}
+      
+      {texts.left && (gameState === 'loading' || gameState === 'playing') && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           {/* Left Text */}
           <div className="flex flex-col gap-4">

@@ -1,5 +1,5 @@
-import { getModelConfig as getConfigModelConfig } from '../server-config';
 import { countWords, countParagraphs } from '../text-utils';
+import { getSystemInstruction } from '../server-config';
 
 export interface SystemInstructionContext {
   model: string;
@@ -36,10 +36,10 @@ export function analyzeStory(story: string): StoryAnalysis {
 }
 
 export function buildSystemInstruction(context: SystemInstructionContext): string {
-  const modelConfig = getConfigModelConfig(context.model);
-  const baseInstruction = modelConfig?.systemInstruction || 'You are a creative writing assistant.';
+  // Get the appropriate system instruction for this model
+  const baseInstruction = getSystemInstruction(context.model);
   
-  // If no reference story, return the static config instruction
+  // If no reference story, return the base instruction
   if (!context.referenceStory) {
     return baseInstruction;
   }
@@ -47,21 +47,19 @@ export function buildSystemInstruction(context: SystemInstructionContext): strin
   // Analyze the reference story
   const analysis = analyzeStory(context.referenceStory);
   
-  // Build dynamic instruction based on model capabilities and story analysis
-  return buildDynamicInstruction(analysis);
+  // Build dynamic instruction based on story analysis
+  return buildDynamicInstruction(baseInstruction, analysis);
 }
 
 function buildDynamicInstruction(
+  baseInstruction: string,
   analysis: StoryAnalysis
 ): string {
-  // Build unified role prompt
-  const rolePrompt = buildUnifiedRolePrompt();
-  
   // Build structural constraints
   const structuralInstructions = buildStructuralInstructions(analysis);
   
-  // Combine role prompt with dynamic constraints
-  return `${rolePrompt}
+  // Combine base instruction with dynamic constraints
+  return `${baseInstruction}
 
 ${structuralInstructions}
 
@@ -69,18 +67,7 @@ Focus on maintaining natural flow, engaging storytelling, and high-quality writi
 End with: <|endofstory|>`.trim();
 }
 
-function buildUnifiedRolePrompt(): string {
-  return `You are an expert storyteller and accomplished author. You have been trained to write compelling, engaging narratives across various genres and styles. When given a prompt, you will create a complete story that responds thoughtfully to the request while following any structural constraints provided.
 
-You understand that good storytelling involves:
-- Engaging characters and authentic dialogue
-- Clear narrative structure and pacing  
-- Vivid descriptions that immerse the reader
-- Emotional resonance and meaningful themes
-- Proper adherence to any length or formatting requirements
-
-You will craft your story to meet the specified constraints while prioritizing narrative quality and reader engagement.`;
-}
 
 function buildStructuralInstructions(analysis: StoryAnalysis): string {
   const { paragraphCount, avgWordsPerParagraph, targetWordRange } = analysis;

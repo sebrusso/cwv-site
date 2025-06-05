@@ -1,4 +1,4 @@
-import { getModelConfigs, getAvailableModels, getModelConfig as getConfigModelConfig, ModelConfig as ConfigModelConfig } from '../server-config';
+import { getModelConfigs, getAvailableModels, getModelConfig as getConfigModelConfig, getServerConfig, ModelConfig as ConfigModelConfig } from '../server-config';
 
 // Legacy interface for backward compatibility
 export interface ModelConfig {
@@ -12,12 +12,13 @@ export interface ModelConfig {
 
 // Convert new config format to legacy format
 function convertToLegacyFormat(config: ConfigModelConfig): ModelConfig {
+  const serverConfig = getServerConfig();
   return {
     name: config.id,
     provider: config.provider,
     defaultParams: {
       temperature: config.temperature,
-      max_tokens: config.maxTokens,
+      max_tokens: serverConfig.models.defaultMaxTokens,
     },
   };
 }

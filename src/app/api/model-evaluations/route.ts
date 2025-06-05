@@ -4,16 +4,17 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { handleApiAuth } from '@/lib/auth-utils';
 
-export interface ComparisonPayload {
-  modelA: string;
-  modelB: string;
-  winner: string;
-  promptId: string;
+export interface ModelEvaluationPayload {
+  prompt_id: string;
+  model_name: string;
+  selected_response: string;
+  ground_truth: string;
+  is_correct: boolean;
 }
 
-async function handleModelComparison(
+async function handleModelEvaluation(
   supabase: SupabaseClient,
-  payload: ComparisonPayload
+  payload: ModelEvaluationPayload
 ) {
   const { userId, isAuthenticated } = await handleApiAuth(supabase);
   
@@ -21,28 +22,27 @@ async function handleModelComparison(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { modelA, modelB, winner, promptId } = payload;
-  if (!modelA || !modelB || !winner || !promptId) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
-  }
-  if (winner !== modelA && winner !== modelB) {
-    return NextResponse.json({ error: 'Winner must be one of the compared models' }, { status: 400 });
+  const { prompt_id, model_name, selected_response, ground_truth, is_correct } = payload;
+  if (!prompt_id || !model_name || !selected_response || !ground_truth || typeof is_correct !== 'boolean') {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
   // userId is now either a real user ID or an anonymous session ID
-  const { error } = await supabase.from('model_comparisons').insert({
+  const { data, error } = await supabase.from('model_evaluations').insert({
     user_id: userId,
-    model_a: modelA,
-    model_b: modelB,
-    winner,
-    prompt_id: promptId,
-  });
+    prompt_id,
+    model_name,
+    selected_response,
+    ground_truth,
+    is_correct,
+  }).select('id').single();
 
   if (error) {
-    console.error('Failed to save model comparison', error);
+    console.error('Failed to save model evaluation', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ success: true });
+  
+  return NextResponse.json({ success: true, id: data.id });
 }
 
 export async function POST(req: Request) {
@@ -71,9 +71,9 @@ export async function POST(req: Request) {
 
   try {
     const payload = await req.json();
-    return handleModelComparison(supabase, payload);
+    return handleModelEvaluation(supabase, payload);
   } catch (err) {
-    console.error(err);
+    console.error('Error in model-evaluations API:', err);
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
-}
+} 
