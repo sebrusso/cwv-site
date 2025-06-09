@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ModeCardLinks from "@/components/ModeCardLinks";
 import { authors } from "@/lib/authors";
+import { SignupCTA } from "@/components/SignupCTA";
 
 export default function HomePage() {
   return (
@@ -14,6 +15,8 @@ export default function HomePage() {
           Explore how humans judge creative writing and help us study human vs AI storytelling.
         </p>
       </section>
+
+      <SignupCTA />
 
       <div className="flex justify-center gap-4">
         <Link href="/resources">
