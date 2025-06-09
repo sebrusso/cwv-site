@@ -57,22 +57,22 @@ async function generateReferenceAwareStory(
     referenceStory: context.referenceStory
   });
 
-  const response = await fetchFn('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify(request),
+  // Use the unified wrapper to handle both reasoning and non-reasoning models
+  const { chat } = await import('./openaiWrapper');
+  
+  const response = await chat({
+    model: request.model,
+    messages: request.messages,
+    max_tokens: request.max_tokens || request.max_completion_tokens,
+    temperature: request.temperature,
+    top_p: request.top_p,
+    frequency_penalty: request.frequency_penalty,
+    presence_penalty: request.presence_penalty,
+    stop: request.stop,
+    reasoning_effort: request.reasoning_effort,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API request failed: ${errorText}`);
-  }
-
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content || '';
+  const text = response.choices?.[0]?.message?.content || '';
   const cleanText = text.replace(/<\|endofstory\|>/g, '').trim();
 
   return {

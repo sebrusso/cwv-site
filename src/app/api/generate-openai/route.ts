@@ -39,26 +39,24 @@ async function handleGenerateOpenAI(
       // Calculate reference story stats for logging
       refWords = countWords(referenceStory);
       refParas = countParagraphs(referenceStory);
-      genTokens = balancedRequest.max_tokens;
+      genTokens = balancedRequest.max_tokens || balancedRequest.max_completion_tokens;
 
-      // Make direct OpenAI API call with balanced parameters
-      const res = await fetchFn('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify(balancedRequest),
+      // Use the unified OpenAI wrapper instead of direct API call
+      const { chat } = await import('../../../lib/ai/openaiWrapper');
+      
+      const response = await chat({
+        model: balancedRequest.model,
+        messages: balancedRequest.messages,
+        max_tokens: balancedRequest.max_tokens || balancedRequest.max_completion_tokens,
+        temperature: balancedRequest.temperature,
+        top_p: balancedRequest.top_p,
+        frequency_penalty: balancedRequest.frequency_penalty,
+        presence_penalty: balancedRequest.presence_penalty,
+        stop: balancedRequest.stop,
+        reasoning_effort: balancedRequest.reasoning_effort,
       });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText);
-      }
-
-      const data = await res.json();
-      const choice = data.choices?.[0] || {};
-      text = choice.message?.content || '';
+      text = response.choices?.[0]?.message?.content || '';
       
       // Remove the end token if present
       text = text.replace(/<\|endofstory\|>/g, '').trim();

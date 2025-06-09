@@ -1,18 +1,21 @@
 import { buildSystemInstruction, getOptimizedParameters } from './systemInstructionBuilder';
 import { getServerConfig } from '../server-config';
+import { isReasoningModel, getDefaultReasoningEffort } from '../models/modelUtils';
 
 export interface UnifiedChatRequest {
   model: string;
   messages: Array<{
-    role: "system" | "user" | "assistant";
+    role: "system" | "user" | "assistant" | "developer";
     content: string;
   }>;
-  max_tokens: number;
-  temperature: number;
-  top_p: number;
-  frequency_penalty: number;
-  presence_penalty: number;
-  stop: string[];
+  max_tokens?: number;
+  max_completion_tokens?: number;
+  temperature?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  stop?: string[];
+  reasoning_effort?: 'low' | 'medium' | 'high';
 }
 
 export interface GenerationContext {
@@ -49,24 +52,56 @@ export function buildUnifiedChatRequest(context: GenerationContext): UnifiedChat
   const config = getServerConfig();
   const maxTokens = context.customParams?.max_tokens || config.models.defaultMaxTokens;
   
-  // Override with custom parameters if provided
-  const finalParams = {
-    temperature: context.customParams?.temperature ?? optimizedParams.temperature,
-    top_p: optimizedParams.top_p,
-    frequency_penalty: optimizedParams.frequency_penalty,
-    presence_penalty: optimizedParams.presence_penalty,
-  };
+  // Check if this is a reasoning model
+  const isReasoning = isReasoningModel(context.model);
   
-  return {
+  // Transform messages for reasoning models
+  const messages: Array<{
+    role: "system" | "user" | "assistant" | "developer";
+    content: string;
+  }> = [];
+  
+  // Handle system instruction based on model type
+  if (isReasoning) {
+    if (context.model.startsWith('o1')) {
+      // o1 models don't support system messages, so convert to user message
+      messages.push({ 
+        role: "user", 
+        content: `System instruction: ${systemInstruction}\n\nUser request: ${context.prompt}` 
+      });
+    } else {
+      // Newer o3/o4 models support developer role
+      messages.push({ role: "developer", content: systemInstruction });
+      messages.push({ role: "user", content: context.prompt });
+    }
+  } else {
+    // Non-reasoning models use normal system message
+    messages.push({ role: "system", content: systemInstruction });
+    messages.push({ role: "user", content: context.prompt });
+  }
+  
+  // Build request based on model type
+  const request: UnifiedChatRequest = {
     model: context.model,
-    messages: [
-      { role: "system", content: systemInstruction },
-      { role: "user", content: context.prompt }
-    ],
-    max_tokens: maxTokens,
-    ...finalParams,
+    messages,
     stop: context.customParams?.stop || ["<|endofstory|>"]
   };
+  
+  if (isReasoning) {
+    // Reasoning model parameters
+    request.max_completion_tokens = maxTokens;
+    request.reasoning_effort = getDefaultReasoningEffort(context.model);
+    // Don't add sampling parameters (temperature, top_p, etc.) as they're not supported
+  } else {
+    // Non-reasoning model parameters
+    request.max_tokens = maxTokens;
+    request.temperature = context.customParams?.temperature ?? optimizedParams.temperature;
+    request.top_p = optimizedParams.top_p;
+    request.frequency_penalty = optimizedParams.frequency_penalty;
+    request.presence_penalty = optimizedParams.presence_penalty;
+  }
+  
+  return request;
 }
 
 // Legacy compatibility function

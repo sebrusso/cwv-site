@@ -13,7 +13,12 @@ export function ModelSelector({ models, onSelect }: ModelSelectorProps) {
   const [modelB, setModelB] = useState(models[1] || models[0] || "");
 
   const start = () => {
-    if (!modelA || !modelB) return;
+    console.log("🎯 ModelSelector start clicked:", { modelA, modelB, isValid });
+    if (!modelA || !modelB) {
+      console.log("❌ ModelSelector: Missing models");
+      return;
+    }
+    console.log("✅ ModelSelector: Calling onSelect");
     onSelect({ modelA, modelB });
   };
 

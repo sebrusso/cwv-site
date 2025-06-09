@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { chat } from '../../../lib/ai/openaiWrapper';
+import { getDefaultReasoningEffort } from '../../../lib/models/modelUtils';
 
 interface BulkRequest {
   prompts: Array<{
@@ -33,7 +30,7 @@ export async function POST(req: Request) {
     const results = await Promise.allSettled(
       prompts.map(async ({ id, prompt }) => {
         try {
-          const completion = await openai.chat.completions.create({
+          const completion = await chat({
             model,
             messages: [
               {
@@ -43,6 +40,7 @@ export async function POST(req: Request) {
             ],
             max_tokens: 400,
             temperature: 0.8,
+            reasoning_effort: getDefaultReasoningEffort(model),
           });
 
           const text = completion.choices[0]?.message?.content?.trim() || '';

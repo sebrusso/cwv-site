@@ -11,8 +11,9 @@ export interface ModelConfig {
   provider: 'openai' | 'anthropic' | 'google';
   displayName: string;
   description: string;
-  temperature: number;
+  temperature: number | null;
   enabled: boolean;
+  isReasoning: boolean;
   customSystemInstruction: string | null;
 }
 
@@ -54,6 +55,7 @@ export interface ServerAppConfig {
     defaultProvider: string;
     defaultTemperature: number;
     defaultMaxTokens: number;
+    defaultReasoningEffort: string;
     defaultSystemInstruction: string;
     configurations: ModelConfig[];
   };
@@ -136,6 +138,11 @@ export function getSystemInstruction(modelId: string): string {
   const model = getModelConfig(modelId);
   const config = getServerConfig();
   return model?.customSystemInstruction || config.models.defaultSystemInstruction || 'You are a creative writing assistant.';
+}
+
+export function getDefaultReasoningEffort(): 'low' | 'medium' | 'high' {
+  const config = getServerConfig();
+  return config.models.defaultReasoningEffort as 'low' | 'medium' | 'high';
 }
 
 // Legacy interface for backward compatibility in server-side code
