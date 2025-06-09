@@ -7,15 +7,15 @@ import { handleApiAuth } from '@/lib/auth-utils';
 
 async function handleContentReport(
   admin: SupabaseClient,
-  { contentType, contentId, reason }: { contentType: string; contentId: string; reason: string },
+  payload: { contentType: string; contentId: string; reason: string },
   userId: string | null,
 ) {
   // userId is now either a real user ID or an anonymous session ID
   const { error } = await admin.from('content_reports').insert({
     user_id: userId,
-    content_type: contentType,
-    content_id: contentId,
-    reason,
+    content_type: payload.contentType,
+    content_id: payload.contentId,
+    reason: payload.reason,
   });
   if (error) {
     console.error('Failed to save content report', error);
