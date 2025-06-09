@@ -24,7 +24,7 @@ interface GenerationData {
 
 const generationCache = new Map<string, GenerationData>();
 
-export async function handleGenerateLiveComparison(
+async function handleGenerateLiveComparison(
   supabase: SupabaseClient,
   {
     prompt_db_id,
