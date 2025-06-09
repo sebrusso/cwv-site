@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ModeCardLinks from "@/components/ModeCardLinks";
+import { authors } from "@/lib/authors";
 
 export default function HomePage() {
   return (
@@ -42,7 +43,7 @@ export default function HomePage() {
       </section>
 
       <footer className="text-center text-sm text-muted-foreground space-y-1">
-        <p>Authors: Sebastian Russo and Kabir Jolly</p>
+        <p>Authors: {authors.join(', ')}</p>
         <p>Autonomous Agents Lab at Stanford (Nick Haber, PI)</p>
       </footer>
     </div>
