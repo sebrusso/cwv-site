@@ -44,7 +44,7 @@ describe("TextPane", () => {
       _isSyncing: { value: false, writable: true }
     });
 
-    fireEvent.scroll(pane);
+    fireEvent.scroll(pane as Element);
     expect(pairedRef.current.scrollTop).toBeGreaterThan(0);
   });
 
@@ -101,7 +101,7 @@ describe("TextPane", () => {
       _isSyncing: { value: true, writable: true }
     });
 
-    fireEvent.scroll(pane);
+    fireEvent.scroll(pane as Element);
     expect(pairedRef.current.scrollTop).toBe(0);
   });
 

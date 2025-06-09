@@ -238,7 +238,11 @@ test('user-dashboard aggregates user stats', async () => {
 
 test('content-report unauthorized', async () => {
   const { handleContentReport } = loadRoute('src/app/api/content-report/route.ts');
-  const res = await handleContentReport(supabaseMock(null), { contentType: 'prompt', contentId: 'p1' });
+  const res = await handleContentReport(supabaseMock(null), {
+    contentType: 'prompt',
+    contentId: 'p1',
+    reason: 'spam'
+  });
   assert.equal(res.status, 401);
 });
 

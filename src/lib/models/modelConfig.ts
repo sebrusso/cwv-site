@@ -17,7 +17,7 @@ function convertToLegacyFormat(config: ConfigModelConfig): ModelConfig {
     name: config.id,
     provider: config.provider,
     defaultParams: {
-      temperature: config.temperature,
+      temperature: config.temperature ?? undefined,
       max_tokens: serverConfig.models.defaultMaxTokens,
     },
   };

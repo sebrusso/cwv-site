@@ -10,9 +10,10 @@ import { getAuthErrorMessage, isDevelopment } from "@/lib/auth-utils";
 
 interface LoginFormProps {
   onClose?: () => void;
+  redirectPath?: string;
 }
 
-export function LoginForm({ onClose }: LoginFormProps = {}) {
+export function LoginForm({ onClose, redirectPath }: LoginFormProps = {}) {
   const { signInWithPassword } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,7 +70,7 @@ export function LoginForm({ onClose }: LoginFormProps = {}) {
         if (onClose) {
           onClose();
         } else {
-          router.push('/dashboard');
+          router.push(redirectPath || '/dashboard');
         }
       }
     } catch (err) {

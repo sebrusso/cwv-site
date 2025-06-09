@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { isReasoningModel } from '../models/modelUtils';
+// import { isReasoningModel } from '../models/modelUtils'; // Currently unused
 
 let client: any = null;
 

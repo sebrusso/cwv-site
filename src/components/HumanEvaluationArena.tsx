@@ -11,15 +11,6 @@ import { ReportContentButton } from "./ReportContentButton";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { getRandomPrompt } from "@/lib/prompts";
-import { incrementAnonymousEvaluationsCount } from "@/lib/anonymousSession";
-
-function similarity(a: string, b: string) {
-  const setA = new Set(a.split(/\s+/));
-  const setB = new Set(b.split(/\s+/));
-  const intersection = Array.from(setA).filter((w) => setB.has(w)).length;
-  const union = new Set([...setA, ...setB]).size;
-  return union === 0 ? 0 : intersection / union;
-}
 
 interface WritingPrompt {
   id: string;
@@ -68,10 +59,7 @@ export function HumanEvaluationArena() {
   const [showHighlightTip, setShowHighlightTip] = useState(false);
   const [prompts, setPrompts] = useState<Pick<WritingPrompt, "id" | "prompt">[]>([]);
   const [selectedId, setSelectedId] = useState<string | "random">("random");
-  const [isClientMounted, setIsClientMounted] = useState(false);
   const [hasInitializedScore, setHasInitializedScore] = useState(false);
-
-  const [evaluationStart, setEvaluationStart] = useState<number>(0);
 
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
@@ -79,11 +67,6 @@ export function HumanEvaluationArena() {
   const { user, profile, incrementScore, addViewedPrompt, isLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
-
-  // Ensure client-side only operations
-  useEffect(() => {
-    setIsClientMounted(true);
-  }, []);
 
   const dismissHighlightTip = () => {
     if (typeof window !== "undefined") {
@@ -145,6 +128,14 @@ export function HumanEvaluationArena() {
     loadPrompts();
   }, [user]);
 
+  // Handle pending selection confirmation
+  useEffect(() => {
+    if (pendingSelection) {
+      confirmSelection();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSelection]);
+
   const fetchRandomPrompt = async () => {
     setError(null);
     setLoading(true);
@@ -175,7 +166,6 @@ export function HumanEvaluationArena() {
         left: isChosenLeft ? promptData.chosen : promptData.rejected,
         right: isChosenLeft ? promptData.rejected : promptData.chosen,
       });
-      setEvaluationStart(Date.now());
 
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
@@ -223,7 +213,6 @@ export function HumanEvaluationArena() {
         left: isChosenLeft ? promptData.chosen : promptData.rejected,
         right: isChosenLeft ? promptData.rejected : promptData.chosen,
       });
-      setEvaluationStart(Date.now());
 
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
@@ -394,13 +383,6 @@ export function HumanEvaluationArena() {
     setRationale("");
     setHighlight("");
   };
-
-  useEffect(() => {
-    if (pendingSelection) {
-      confirmSelection();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingSelection]);
 
   return (
     <div className="flex flex-col gap-4 items-center">

@@ -5,6 +5,8 @@ echo "🔍 Verifying Codex Environment..."
 # Check basic tools
 echo "Node version: $(node --version)"
 echo "pnpm version: $(pnpm --version)"
+echo "Python version: $(python3 --version)"
+echo "pip version: $(pip --version)"
 
 # Check if node_modules exists
 if [ ! -d "node_modules" ]; then
@@ -48,6 +50,16 @@ else
     echo "❌ pnpm dev - FAILED"
     exit 1
 fi
+
+# Verify required Python packages are installed
+missing_py_pkg=false
+for pkg in pandas datasets pyarrow supabase python-dotenv; do
+    python3 -c "import $pkg" 2>/dev/null || {
+        echo "❌ Python package $pkg not found";
+        missing_py_pkg=true;
+    }
+done
+[ "$missing_py_pkg" = false ] && echo "✅ Python packages - OK" || exit 1
 
 echo "✅ Environment verification complete. All checks passed!"
 echo "🚀 Ready for development!" 

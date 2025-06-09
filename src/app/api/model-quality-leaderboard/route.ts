@@ -26,7 +26,7 @@ function recordWin(matrix: Record<string, Record<string, number>>, winner: strin
   matrix[winner][loser]++;
 }
 
-export async function handleModelQualityLeaderboard(supabase: SupabaseClient) {
+async function handleModelQualityLeaderboard(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('model_comparisons')
     .select('model_a,model_b,winner');

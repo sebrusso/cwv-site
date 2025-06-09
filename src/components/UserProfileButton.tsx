@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/UserContext";
@@ -71,7 +71,9 @@ export function UserProfileButton() {
             </Button>
           </div>
         ) : (
-          <LoginForm onClose={handleClosePopover} redirectPath={pathname} />
+          <Suspense fallback={<div className="p-4">Loading...</div>}>
+            <LoginForm onClose={handleClosePopover} redirectPath={pathname} />
+          </Suspense>
         )}
       </PopoverContent>
     </Popover>

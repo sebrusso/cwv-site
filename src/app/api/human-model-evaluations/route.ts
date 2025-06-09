@@ -4,7 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { handleApiAuth } from '@/lib/auth-utils';
 
-export async function handleHumanModelEvaluation(
+async function handleHumanModelEvaluation(
   supabase: SupabaseClient,
   { prompt_id, is_correct, model_name = '' }: { prompt_id: string; is_correct: boolean; model_name?: string },
 ) {

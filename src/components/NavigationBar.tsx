@@ -16,6 +16,13 @@ export function NavigationBar() {
         className={linkClass("/")}
         onClick={() => logEvent("navigate", { path: "/" })}
       >
+        Home
+      </Link>
+      <Link
+        href="/human"
+        className={linkClass("/human")}
+        onClick={() => logEvent("navigate", { path: "/human" })}
+      >
         Arena
       </Link>
       {config.enableResources && (
