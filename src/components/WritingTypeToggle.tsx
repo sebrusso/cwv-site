@@ -9,9 +9,10 @@ export function WritingTypeToggle() {
 
   const isModelPath = pathname === "/model-evaluation";
   const isHumanMachinePath = pathname === "/human-machine";
+  const isHumanPath = pathname === "/human";
 
   const handleToggleHuman = () => {
-    router.push("/");
+    router.push("/human");
   };
 
   const handleToggleModel = () => {
@@ -47,7 +48,7 @@ export function WritingTypeToggle() {
       <button
         onClick={handleToggleHuman}
         className={`flex items-center px-2.5 py-1 rounded-full transition-all ${
-          !isModelPath && !isHumanMachinePath ? "bg-white dark:bg-gray-700 shadow-sm font-medium" : "hover:bg-gray-200 dark:hover:bg-gray-700"}
+          isHumanPath ? "bg-white dark:bg-gray-700 shadow-sm font-medium" : "hover:bg-gray-200 dark:hover:bg-gray-700"}
         `}
       >
         <User className="h-3 w-3 mr-1.5" />
