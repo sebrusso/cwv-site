@@ -209,6 +209,7 @@ src/
 - **`evaluation_quality_metrics`**: Response time and confidence tracking
 - **`dataset_downloads`**: Research data access logging
 - **`model_writing_rationales`**: Model-specific reasoning collection
+- **`error_logs`**: Server-side error tracking
 
 ## API Endpoints
 

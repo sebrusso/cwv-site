@@ -121,6 +121,7 @@ This platform generates valuable datasets for:
 - User authentication required for data submission
 - Content moderation and reporting system
 - Secure API key management
+- Server-side error logging stored in the `error_logs` table
 - Optional demographic data collection with user consent
 
 ## Contributing
