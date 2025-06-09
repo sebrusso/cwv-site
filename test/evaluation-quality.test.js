@@ -49,7 +49,7 @@ test('evaluation-quality inserts row', async () => {
   assert.equal(res.status, 200);
   assert.deepEqual(inserted, {
     user_id: 'u1',
-    evaluation_time_ms: 2000,
+    evaluation_time: 2000,
     prompt_similarity: 0.6,
     confidence_score: 0.9,
   });

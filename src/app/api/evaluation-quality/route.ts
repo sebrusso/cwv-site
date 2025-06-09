@@ -68,7 +68,7 @@ async function handleEvaluationQuality(
 async function handleGetQuality(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('evaluation_quality_metrics')
-    .select('evaluation_time_ms,prompt_similarity,confidence_score');
+    .select('evaluation_time,prompt_similarity,confidence_score');
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -78,7 +78,7 @@ async function handleGetQuality(supabase: SupabaseClient) {
   const total = data.length;
   const sums = data.reduce(
     (acc, row) => {
-      acc.evaluationTime += row.evaluation_time_ms || 0;
+      acc.evaluationTime += row.evaluation_time || 0;
       acc.promptSimilarity += row.prompt_similarity || 0;
       acc.confidenceScore += row.confidence_score || 0;
       return acc;
