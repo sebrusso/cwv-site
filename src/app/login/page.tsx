@@ -2,8 +2,9 @@
 
 import { LoginForm } from "@/components/LoginForm";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const params = useSearchParams();
   const redirect = params.get("redirect") || "/";
 
@@ -14,5 +15,13 @@ export default function LoginPage() {
         <LoginForm redirectPath={redirect} />
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center mt-10">Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

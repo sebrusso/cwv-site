@@ -28,16 +28,16 @@ interface LiveEvaluationDisplayData {
   model_B_name: string;
 }
 
-// Interface for model comparison data
-interface ModelComparison {
-  id?: string;
-  user_id: string | null;
-  model_a_name: string;
-  model_b_name: string;
-  winner: string;
-  prompt_id: string | null;
-  created_at?: string;
-}
+// Interface for model comparison data (keeping for future use)
+// interface ModelComparison {
+//   id?: string;
+//   user_id: string | null;
+//   model_a_name: string;
+//   model_b_name: string;
+//   winner: string;
+//   prompt_id: string | null;
+//   created_at?: string;
+// }
 
 interface EnhancementOptions {
   targetLength: 'short' | 'medium' | 'long';
@@ -193,10 +193,7 @@ export function ModelEvaluationArena() {
     }
   }, []);
 
-  const prefetchNextComparison = useCallback(async () => {
-    // Simplified - no prefetching needed with the unified API approach
-    // The API calls are fast enough that we don't need complex prefetching
-  }, []);
+  // Removed prefetchNextComparison as it's not currently used
 
   const generateComparison = async (customPromptText?: string, models?: { modelA: string; modelB: string }) => {
     // Use passed models parameter or fall back to selectedModels state
@@ -541,7 +538,7 @@ export function ModelEvaluationArena() {
                 <label className="block text-sm font-medium mb-2">Story Length</label>
                 <select
                   value={enhancementOptions.targetLength}
-                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, targetLength: e.target.value as any }))}
+                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, targetLength: e.target.value as EnhancementOptions['targetLength'] }))}
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="short">Short</option>
@@ -554,7 +551,7 @@ export function ModelEvaluationArena() {
                 <label className="block text-sm font-medium mb-2">Genre</label>
                 <select
                   value={enhancementOptions.genre}
-                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, genre: e.target.value as any }))}
+                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, genre: e.target.value as EnhancementOptions['genre'] }))}
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="literary">Literary</option>
@@ -569,7 +566,7 @@ export function ModelEvaluationArena() {
                 <label className="block text-sm font-medium mb-2">Tone</label>
                 <select
                   value={enhancementOptions.tone}
-                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, tone: e.target.value as any }))}
+                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, tone: e.target.value as EnhancementOptions['tone'] }))}
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="dramatic">Dramatic</option>
@@ -583,7 +580,7 @@ export function ModelEvaluationArena() {
                 <label className="block text-sm font-medium mb-2">Complexity</label>
                 <select
                   value={enhancementOptions.complexity}
-                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, complexity: e.target.value as any }))}
+                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, complexity: e.target.value as EnhancementOptions['complexity'] }))}
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="simple">Simple</option>

@@ -11,7 +11,7 @@ export interface SpeedModeEntry {
   best_streak: number;
 }
 
-export async function handleSpeedModeLeaderboard(supabase: SupabaseClient) {
+async function handleSpeedModeLeaderboard(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('speed_mode_scores')
     .select('username,total_correct,attempts,accuracy,best_streak');
