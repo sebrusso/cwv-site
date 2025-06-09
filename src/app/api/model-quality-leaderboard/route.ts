@@ -4,8 +4,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface ComparisonRow {
-  model_a: string;
-  model_b: string;
+  model_a_name: string;
+  model_b_name: string;
   winner: string;
 }
 
@@ -29,7 +29,7 @@ function recordWin(matrix: Record<string, Record<string, number>>, winner: strin
 async function handleModelQualityLeaderboard(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('model_comparisons')
-    .select('model_a,model_b,winner');
+    .select('model_a_name,model_b_name,winner');
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -39,8 +39,8 @@ async function handleModelQualityLeaderboard(supabase: SupabaseClient) {
   const matrix: Record<string, Record<string, number>> = {};
 
   for (const row of data as ComparisonRow[]) {
-    const a = row.model_a;
-    const b = row.model_b;
+    const a = row.model_a_name;
+    const b = row.model_b_name;
     const winner =
       row.winner === 'A' ? a : row.winner === 'B' ? b : row.winner;
 

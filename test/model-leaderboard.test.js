@@ -30,9 +30,9 @@ test('model leaderboard returns an array of entries', async () => {
   const { handleModelLeaderboard } = loadRoute('src/app/api/model-leaderboard/route.ts');
   const supabase = supabaseSelectMock({
     model_comparisons: [
-      { model_a: 'A', model_b: 'B', winner: 'A' },
-      { model_a: 'A', model_b: 'B', winner: 'B' },
-      { model_a: 'B', model_b: 'C', winner: 'B' },
+      { model_a_name: 'A', model_b_name: 'B', winner: 'A' },
+      { model_a_name: 'A', model_b_name: 'B', winner: 'B' },
+      { model_a_name: 'B', model_b_name: 'C', winner: 'B' },
     ],
     human_model_evaluations: [
       { model_name: 'A', is_correct: false }, // Model A deception
