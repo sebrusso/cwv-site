@@ -72,7 +72,7 @@ async function computeDashboardData(
   return { daily, total, ranking: { position, totalUsers } };
 }
 
-async function handleUserDashboard(
+export async function handleUserDashboard(
   supabase: SupabaseClient,
   userId: string
 ) {
