@@ -16,13 +16,13 @@ export function SpeedModeToggle({ isSpeedMode, onToggle }: SpeedModeToggleProps)
         size="sm"
         onClick={() => onToggle(false)}
         className={`flex items-center gap-2 px-3 py-1.5 transition-all ${
-          !isSpeedMode 
-            ? "bg-white dark:bg-gray-700 shadow-sm" 
+          !isSpeedMode
+            ? "bg-white dark:bg-gray-700 shadow-sm"
             : "hover:bg-gray-200 dark:hover:bg-gray-700"
         }`}
       >
         <Clock className="h-4 w-4" />
-        Regular
+        <span className="text-black dark:text-black">Regular</span>
       </Button>
       <Button
         variant={isSpeedMode ? "default" : "ghost"}
