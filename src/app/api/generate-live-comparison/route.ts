@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { generateStory } from '../../../lib/ai/storyGenerationService';
+import { type GenerateOptions } from '../../../lib/models/aiService';
 import { AVAILABLE_MODELS } from '../../../lib/models/modelConfig';
 
 // Initialize Supabase client with the SERVICE ROLE KEY for admin-level operations
@@ -26,25 +27,22 @@ const generationCache = new Map<string, GenerationData>();
 
 async function handleGenerateLiveComparison(
   supabase: SupabaseClient,
-  {
+  { 
     prompt_db_id,
     prompt_text,
     prefetch,
     modelA,
     modelB,
-    enhancedOptions,
+    paramsA,
+    paramsB,
   }: {
     prompt_db_id?: string;
     prompt_text?: string;
     prefetch?: boolean;
     modelA?: string;
     modelB?: string;
-    enhancedOptions?: {
-      targetLength?: 'short' | 'medium' | 'long';
-      genre?: 'literary' | 'adventure' | 'mystery' | 'romance' | 'sci-fi';
-      tone?: 'dramatic' | 'humorous' | 'suspenseful' | 'heartwarming';
-      complexity?: 'simple' | 'nuanced' | 'complex';
-    };
+    paramsA?: GenerateOptions;
+    paramsB?: GenerateOptions;
   },
 ) {
   if (!prompt_db_id && !prompt_text) {
@@ -54,6 +52,21 @@ async function handleGenerateLiveComparison(
   // Use provided models or fall back to defaults
   const MODEL_A_NAME = modelA && AVAILABLE_MODELS.includes(modelA) ? modelA : 'gpt-4o';
   const MODEL_B_NAME = modelB && AVAILABLE_MODELS.includes(modelB) ? modelB : 'gpt-4o-mini';
+
+  const defaultParamsA: GenerateOptions = {
+    temperature: 0.7,
+    max_tokens: 300,
+    stop: ['\n\n'],
+  };
+
+  const defaultParamsB: GenerateOptions = {
+    temperature: 0.8,
+    max_tokens: 300,
+    stop: ['\n\n'],
+  };
+
+  const finalParamsA = { ...defaultParamsA, ...paramsA };
+  const finalParamsB = { ...defaultParamsB, ...paramsB };
 
   let promptId = prompt_db_id;
 
@@ -103,7 +116,6 @@ async function handleGenerateLiveComparison(
     prompt: sourcePromptText,
     model: MODEL_A_NAME,
     generationType: 'model-vs-model',
-    enhancedInstructions: enhancedOptions
   });
 
   // Generate response B using enhanced story generation service
@@ -111,7 +123,6 @@ async function handleGenerateLiveComparison(
     prompt: sourcePromptText,
     model: MODEL_B_NAME,
     generationType: 'model-vs-model',
-    enhancedInstructions: enhancedOptions
   });
 
   const sentenceA = storyA.text;
@@ -130,6 +141,8 @@ async function handleGenerateLiveComparison(
       response_a_text: sentenceA,
       model_b_name: MODEL_B_NAME,
       response_b_text: sentenceB,
+      generation_parameters_a: finalParamsA,
+      generation_parameters_b: finalParamsB,
     })
     .select('id')
     .single();
@@ -163,14 +176,26 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { prompt_db_id, prompt_text, prefetch, modelA, modelB, enhancedOptions } = await req.json();
-    return handleGenerateLiveComparison(supabaseAdmin, { 
-      prompt_db_id, 
-      prompt_text, 
-      prefetch, 
-      modelA, 
-      modelB, 
-      enhancedOptions 
+    // Combine destructuring to include prompt_text from HEAD and other params from main
+    const {
+      prompt_db_id,
+      prompt_text,
+      prefetch,
+      modelA,
+      modelB,
+      paramsA,
+      paramsB,
+    } = await req.json();
+    // Call handleGenerateLiveComparison, ensuring prompt_text is passed if available
+    // The openai client is no longer passed directly, as aiService handles it.
+    return handleGenerateLiveComparison(supabaseAdmin, {
+      prompt_db_id,
+      prompt_text,
+      prefetch,
+      modelA,
+      modelB,
+      paramsA,
+      paramsB,
     });
   } catch (err) {
     console.error('Overall error in /api/generate-live-comparison:', err);
