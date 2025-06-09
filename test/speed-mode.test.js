@@ -76,6 +76,14 @@ test('speed-mode leaderboard aggregates results', async () => {
   const res = await handleSpeedModeLeaderboard(supabase);
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.equal(body.topScores[0].userId, 'u2');
-  assert.equal(body.bestStreaks[0].userId, 'u1');
+  assert.equal(body.length, 2);
+  const u1 = body.find((r) => r.user_id === 'u1');
+  const u2 = body.find((r) => r.user_id === 'u2');
+  assert.ok(u1);
+  assert.ok(u2);
+  assert.equal(u1.total_correct, 13);
+  assert.equal(u1.attempts, 20);
+  assert.equal(u1.best_streak, 8);
+  assert.equal(u2.total_correct, 9);
+  assert.equal(u2.attempts, 10);
 });

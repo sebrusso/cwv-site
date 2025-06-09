@@ -143,10 +143,10 @@ function SpeedModeLeaderboard() {
     fetchData();
   }, []);
 
-  const tableData = entries.map((e) => ({ ...e, model: e.username }));
+  const tableData = entries.map((e) => ({ ...e, model: e.user_id }));
 
   const columns: TableColumn<(typeof tableData)[number]>[] = [
-    { key: 'model', label: 'Username', sortable: true },
+    { key: 'model', label: 'User ID', sortable: true },
     { key: 'total_correct', label: 'Correct', sortable: true },
     { key: 'attempts', label: 'Attempts', sortable: true },
     {

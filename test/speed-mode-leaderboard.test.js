@@ -26,15 +26,18 @@ function supabaseSelectMock(data) {
   };
 }
 
-test('speed mode leaderboard returns entries', async () => {
+test('speed mode leaderboard aggregates results', async () => {
   const { handleSpeedModeLeaderboard } = loadRoute('src/app/api/speed-mode-leaderboard/route.ts');
   const supabase = supabaseSelectMock([
-    { username: 'a', total_correct: 5, attempts: 10, accuracy: 0.5, best_streak: 2 },
-    { username: 'b', total_correct: 8, attempts: 10, accuracy: 0.8, best_streak: 5 }
+    { user_id: 'u1', correct: 5, total: 10, longest_streak: 2 },
+    { user_id: 'u1', correct: 3, total: 5, longest_streak: 5 }
   ]);
   const res = await handleSpeedModeLeaderboard(supabase);
   assert.equal(res.status, 200);
   const data = await res.json();
-  assert.equal(data.length, 2);
-  assert.equal(data[0].username, 'a');
+  assert.equal(data.length, 1);
+  assert.equal(data[0].user_id, 'u1');
+  assert.equal(data[0].total_correct, 8);
+  assert.equal(data[0].attempts, 15);
+  assert.equal(data[0].best_streak, 5);
 });

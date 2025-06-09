@@ -11,7 +11,7 @@ export interface QualityEntry {
 }
 
 export interface SpeedModeEntry {
-  username: string;
+  user_id: string;
   total_correct: number;
   attempts: number;
   accuracy: number;
