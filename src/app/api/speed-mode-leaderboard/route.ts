@@ -1,26 +1,13 @@
-import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { AggregatedSpeedEntry } from '../speed-mode/route';
+import { handleSpeedModeLeaderboard as aggregate } from '../speed-mode/route';
 
-export interface SpeedModeEntry {
-  username: string;
-  total_correct: number;
-  attempts: number;
-  accuracy: number;
-  best_streak: number;
-}
+export type SpeedModeEntry = AggregatedSpeedEntry;
 
 export async function handleSpeedModeLeaderboard(supabase: SupabaseClient) {
-  const { data, error } = await supabase
-    .from('speed_mode_scores')
-    .select('username,total_correct,attempts,accuracy,best_streak');
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json(data as SpeedModeEntry[]);
+  return aggregate(supabase);
 }
 
 export async function GET() {
