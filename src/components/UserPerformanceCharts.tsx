@@ -89,7 +89,14 @@ export default function UserPerformanceCharts() {
 
         if (speedRes.ok) {
           const json = await speedRes.json();
-          setSpeed(json);
+          if (
+            typeof json.bestScore === 'number' &&
+            typeof json.longestStreak === 'number'
+          ) {
+            setSpeed({ bestScore: json.bestScore, longestStreak: json.longestStreak });
+          } else {
+            setSpeed({ bestScore: 0, longestStreak: 0 });
+          }
         } else {
           setSpeed({ bestScore: 0, longestStreak: 0 });
         }

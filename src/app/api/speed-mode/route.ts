@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { handleApiAuth } from '@/lib/auth-utils';
 
 export interface SpeedScorePayload {
@@ -70,6 +71,29 @@ async function handleSpeedModeLeaderboard(supabase: SupabaseClient) {
   return NextResponse.json({ topScores, bestStreaks });
 }
 
+async function handleUserSpeedStats(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from('speed_mode_scores')
+    .select('correct,longest_streak')
+    .eq('user_id', userId);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  const rows =
+    (data as { correct: number; longest_streak: number }[]) || [];
+  let bestScore = 0;
+  let longestStreak = 0;
+  for (const row of rows) {
+    if (row.correct > bestScore) bestScore = row.correct;
+    if (row.longest_streak > longestStreak)
+      longestStreak = row.longest_streak;
+  }
+  return NextResponse.json({ bestScore, longestStreak });
+}
+
 export async function POST(req: Request) {
   const cookieStorePromise = cookies();
   const supabase = createServerClient(
@@ -102,7 +126,28 @@ export async function POST(req: Request) {
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization');
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+      },
+    );
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return handleUserSpeedStats(supabase, user.id);
+  }
+
   const cookieStorePromise = cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -127,3 +172,9 @@ export async function GET() {
   );
   return handleSpeedModeLeaderboard(supabase);
 }
+
+export {
+  handlePostSpeedScore,
+  handleSpeedModeLeaderboard,
+  handleUserSpeedStats,
+};

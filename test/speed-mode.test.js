@@ -33,7 +33,17 @@ function supabaseMock(session, onInsert) {
 function supabaseSelectMock(rows) {
   return {
     from: () => ({
-      select: async () => ({ data: rows, error: null }),
+      select: () => {
+        const builder = {
+          async then(resolve) {
+            return resolve({ data: rows, error: null });
+          },
+          async eq(field, value) {
+            return { data: rows.filter((r) => r[field] === value), error: null };
+          },
+        };
+        return builder;
+      },
     }),
   };
 }
@@ -78,4 +88,18 @@ test('speed-mode leaderboard aggregates results', async () => {
   const body = await res.json();
   assert.equal(body.topScores[0].userId, 'u2');
   assert.equal(body.bestStreaks[0].userId, 'u1');
+});
+
+test('speed-mode user stats are computed', async () => {
+  const { handleUserSpeedStats } = loadRoute('src/app/api/speed-mode/route.ts');
+  const supabase = supabaseSelectMock([
+    { user_id: 'u1', correct: 2, longest_streak: 3 },
+    { user_id: 'u1', correct: 7, longest_streak: 5 },
+    { user_id: 'u2', correct: 9, longest_streak: 4 },
+  ]);
+  const res = await handleUserSpeedStats(supabase, 'u1');
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.bestScore, 7);
+  assert.equal(body.longestStreak, 5);
 });
