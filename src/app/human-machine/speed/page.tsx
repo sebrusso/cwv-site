@@ -24,7 +24,8 @@ export default function SpeedModePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sticky top-0 bg-background dark:bg-gray-950 z-10 py-2 px-1 rounded-md shadow">
           <div className="text-sm text-muted-foreground text-center sm:text-left flex items-center gap-2">
             <Info className="h-5 w-5 text-current" />
-            Guess as many as you can before time runs out.
+            Guess as many as you can before time runs out. Click the left or
+            right story you believe was written by a human.
           </div>
           <div className="flex justify-center sm:justify-end">
             <WritingTypeToggle />
