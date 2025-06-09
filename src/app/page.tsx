@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import ModeCardLinks from "@/components/ModeCardLinks";
 
 export default function HomePage() {
   return (
@@ -21,6 +22,12 @@ export default function HomePage() {
 
       <section className="space-y-4">
         <h2 className="text-xl font-medium text-center">Main Features</h2>
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          Choose an evaluation mode to get started.
+        </p>
+        <div className="mb-6">
+          <ModeCardLinks />
+        </div>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link href="/human">
             <Button variant="secondary" size="lg">Human vs Human Arena</Button>
