@@ -102,10 +102,10 @@ test('human-model-evaluations inserts row', async () => {
 test('model-leaderboard aggregates results', async () => {
   const { handleModelLeaderboard } = loadRoute('src/app/api/model-leaderboard/route.ts');
   const supabase = supabaseSelectMock({
-    model_evaluations: [
-      { model_name: 'A', is_correct: true },
-      { model_name: 'A', is_correct: false },
-      { model_name: 'B', is_correct: true },
+    model_comparisons: [
+      { model_a: 'A', model_b: 'B', winner: 'A' },
+      { model_a: 'A', model_b: 'B', winner: 'B' },
+      { model_a: 'B', model_b: 'C', winner: 'B' },
     ],
     human_model_evaluations: [
       { model_name: 'A', is_correct: true },
@@ -116,8 +116,8 @@ test('model-leaderboard aggregates results', async () => {
   const res = await handleModelLeaderboard(supabase);
   assert.equal(res.status, 200);
   const body = await res.json();
-  // Leaderboard is sorted by winRate desc, Model B (1.0) should be first, Model A (0.5) second
-  assert.deepEqual(body.map((r) => r.model), ['B', 'A']); 
+  // Leaderboard is sorted by winRate desc, Model B (~0.67) should be first, Model A (0.5) second
+  assert.deepEqual(body.map((r) => r.model), ['B', 'A', 'C']);
   const modelA = body.find(r => r.model === 'A');
   const modelB = body.find(r => r.model === 'B');
 
@@ -126,8 +126,8 @@ test('model-leaderboard aggregates results', async () => {
 
   // Model A: 1 win / 2 total evals = 0.5
   assert.ok(Math.abs(modelA.winRate - 0.5) < 1e-6, "Model A win rate should be 0.5");
-  // Model B: 1 win / 1 total eval = 1.0
-  assert.ok(Math.abs(modelB.winRate - 1.0) < 1e-6, "Model B win rate should be 1.0");
+  // Model B: 2 wins / 3 total evals ≈ 0.6667
+  assert.ok(Math.abs(modelB.winRate - 2 / 3) < 1e-6, "Model B win rate should be 2/3");
 });
 
 test('generate-live-comparison cache serves prefetched data', async () => {
