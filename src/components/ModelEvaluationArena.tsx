@@ -1,40 +1,41 @@
 "use client";
 
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TextPane } from "@/components/TextPane";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
-import { ModelSelector } from "@/components/ModelSelector";
-import { getRandomPromptId } from "@/lib/prompts";
-import { logEvent } from "@/lib/eventLogger";
-import { incrementAnonymousEvaluationsCount, getAnonymousSessionId } from "@/lib/anonymousSession";
 
-// Supabase client
-
-function similarity(a: string, b: string) {
-  const setA = new Set(a.split(/\s+/));
-  const setB = new Set(b.split(/\s+/));
-  const intersection = Array.from(setA).filter((w) => setB.has(w)).length;
-  const union = new Set([...setA, ...setB]).size;
-  return union === 0 ? 0 : intersection / union;
-}
+// Initialize Supabase client (used for client-side reads if any, and by old logic if not fully removed)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // Updated interface for the data structure we'll manage in the state
 interface LiveEvaluationDisplayData {
   source_prompt_db_id: string; // UUID from the 'writingprompts-pairwise-test' table
   source_prompt_text: string;
-  live_generation_id: string; // ID from the 'live_generations' table used for generation
+  live_generation_id: string; // ID from the 'live_generations' table (this will be the prompt_id for model_evaluations)
   generated_response_A: string;
   generated_response_B: string;
   model_A_name: string;
   model_B_name: string;
 }
 
-
+// ModelEvaluation interface remains similar, but prompt_id will now be live_generation_id
+interface ModelEvaluation {
+  id?: string;
+  user_id: string;
+  prompt_id: string; // This will be the live_generation_id (UUID)
+  selected_response_text: string; // Store the actual text selected
+  selected_model_name: string; // Store the model name of the selected text
+  // ground_truth: string; // Re-evaluate if needed, for live comparison, this is subjective
+  // is_correct: boolean; // For live A/B, correctness isn't predefined
+  created_at?: string;
+}
 
 interface ModelRationale {
   id?: string;
@@ -43,47 +44,33 @@ interface ModelRationale {
   created_at?: string;
 }
 
-interface EnhancementOptions {
-  targetLength: 'short' | 'medium' | 'long';
-  genre: 'literary' | 'adventure' | 'mystery' | 'romance' | 'sci-fi';
-  tone: 'dramatic' | 'humorous' | 'suspenseful' | 'heartwarming';
-  complexity: 'simple' | 'nuanced' | 'complex';
-}
-
 export function ModelEvaluationArena() {
-  // Phase state: 'selection' | 'generating' | 'evaluation'
-  const [phase, setPhase] = useState<'selection' | 'generating' | 'evaluation'>('selection');
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [selectedModels, setSelectedModels] = useState<{ modelA: string; modelB: string } | null>(null);
-  
-  // Enhancement options state
-  const [enhancementOptions, setEnhancementOptions] = useState<EnhancementOptions>({
-    targetLength: 'medium',
-    genre: 'literary',
-    tone: 'dramatic',
-    complexity: 'nuanced'
-  });
-  const [showEnhancements, setShowEnhancements] = useState(false);
-  
   const [currentDisplayData, setCurrentDisplayData] = useState<LiveEvaluationDisplayData | null>(null);
-  const [responses, setResponses] = useState<{ left: string; right: string }>({ left: "", right: "" });
-  const [responseMapping, setResponseMapping] = useState<{ left: "A" | "B"; right: "A" | "B" }>({ left: "A", right: "B" });
-  const [selectedResponseFullText, setSelectedResponseFullText] = useState<string | null>(null);
+  const [selectedResponseFullText, setSelectedResponseFullText] = useState<string | null>(null); // Store the full text of selected response
   const [pendingSelectionSide, setPendingSelectionSide] = useState<"left" | "right" | null>(null);
-  const [pendingSelection, setPendingSelection] = useState<string | null>(null);
-  const [currentEvaluationId, setCurrentEvaluationId] = useState<string | null>(null);
   const [showRationale, setShowRationale] = useState(false);
   const [rationale, setRationale] = useState("");
-  const [showResultFeedback, setShowResultFeedback] = useState(false);
+  const [responses, setResponses] = useState<{ left: string; right: string }>({ // UI display
+    left: "",
+    right: "",
+  });
+  // Keeps track of which original model (A or B from API) is on which side for UI
+  const [responseMapping, setResponseMapping] = useState<{
+    left: "A" | "B";
+    right: "A" | "B";
+  }>({
+    left: "A",
+    right: "B",
+  });
+  const [currentEvaluationId, setCurrentEvaluationId] = useState<string | null>(null); // For storing model_evaluations.id if needed for rationale
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
-  const [evaluationStart, setEvaluationStart] = useState<number>(0);
+  const [showResultFeedback, setShowResultFeedback] = useState(false); // To show some feedback after selection
+  const [isPrefetching, setIsPrefetching] = useState(false);
   const [prefetchedPromptId, setPrefetchedPromptId] = useState<string | null>(null);
-  const [isClientMounted, setIsClientMounted] = useState(false);
-  const [highlight, setHighlight] = useState<string>("");
-  const [customPrompt, setCustomPrompt] = useState("");
+
 
   const leftResponseRef = useRef<HTMLDivElement>(null);
   const rightResponseRef = useRef<HTMLDivElement>(null);
@@ -92,101 +79,53 @@ export function ModelEvaluationArena() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Ensure client-side only operations
-  useEffect(() => {
-    setIsClientMounted(true);
-  }, []);
+  const getRandomPromptId = async () => {
+    const { count, error: countError } = await supabase
+      .from("writingprompts-pairwise-test")
+      .select("id", { count: "exact", head: true });
+    if (countError || !count) throw countError || new Error("No prompts");
+    const randomOffset = Math.floor(Math.random() * count);
+    const { data: randomPromptEntry, error: randomPromptError } = await supabase
+      .from("writingprompts-pairwise-test")
+      .select("id")
+      .range(randomOffset, randomOffset)
+      .single();
+    if (randomPromptError || !randomPromptEntry) throw randomPromptError || new Error("Failed to fetch ID");
+    return randomPromptEntry.id as string;
+  };
 
-  useEffect(() => {
-    if (!user) {
-      const id = getAnonymousSessionId();
-      if (id) {
-        fetch('/api/anonymous-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: id }),
-        }).catch(() => {});
-      }
-    }
-  }, [user]);
-
-  // Fetch available models on mount
-  useEffect(() => {
-    const fetchAvailableModels = async () => {
-      try {
-        const response = await fetch("/api/generate-live-comparison");
-        if (response.ok) {
-          const data = await response.json();
-          setAvailableModels(data.availableModels || []);
-        }
-      } catch (err) {
-        console.error("Failed to fetch available models:", err);
-        // Fallback models if API fails
-        setAvailableModels([
-          'gpt-4o',
-          'gpt-4o-mini',
-          'gpt-4-turbo',
-          'gpt-3.5-turbo',
-          'claude-3-opus',
-          'gemini-pro',
-        ]);
-      }
-    };
-
-    fetchAvailableModels();
-  }, []);
-
-
-  const fetchComparison = useCallback(async (
-    id: string | null,
-    modelA: string,
-    modelB: string,
-    promptText?: string,
-    prefetch = false,
-  ) => {
+  const fetchComparison = async (id: string, prefetch = false) => {
     const apiResponse = await fetch("/api/generate-live-comparison", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt_db_id: id ?? undefined,
-        prompt_text: promptText,
-        prefetch,
-        modelA,
-        modelB,
-        enhancedOptions: enhancementOptions,
-      }),
+      body: JSON.stringify({ prompt_db_id: id, prefetch }),
     });
     if (!apiResponse.ok) {
       const errData = await apiResponse.json();
       throw new Error(errData.error || `API request failed with status ${apiResponse.status}`);
     }
     return apiResponse.json();
-  }, [enhancementOptions]);
+  };
 
   const prefetchNextComparison = useCallback(async () => {
-    if (!selectedModels) return;
-
     try {
+      setIsPrefetching(true);
       const id = await getRandomPromptId();
-      await fetchComparison(id, selectedModels.modelA, selectedModels.modelB, undefined, true);
+      await fetchComparison(id, true);
       setPrefetchedPromptId(id);
     } catch (err) {
       console.error("Prefetch error", err);
+    } finally {
+      setIsPrefetching(false);
     }
-  }, [selectedModels, fetchComparison]);
+  }, []);
 
-  const generateComparison = async (promptText?: string) => {
-    if (!selectedModels) {
-      setError("Please select models first");
-      return;
-    }
-
-    console.log("generateComparison called. User object:", user);
-    console.log("Current Supabase auth session:", supabase.auth.getSession());
+  const fetchNewLiveComparison = useCallback(async (promptId?: string) => {
+    console.log("fetchNewLiveComparison called. User object:", user);
+    console.log("Current Supabase auth session:", supabase.auth.getSession()); // Log current session
 
     setError(null);
     setLoading(true);
-    setPhase('generating');
     setCurrentDisplayData(null);
     setResponses({ left: "", right: "" });
     setSelectedResponseFullText(null);
@@ -196,21 +135,9 @@ export function ModelEvaluationArena() {
     setShowRationale(false);
     setRationale("");
     setShowResultFeedback(false);
-    setHighlight("");
-    
     try {
-      const id = promptText ? null : prefetchedPromptId || (await getRandomPromptId());
-      const liveDataFromApi = await fetchComparison(
-        id,
-        selectedModels.modelA,
-        selectedModels.modelB,
-        promptText || undefined,
-      );
-      void logEvent('generate_comparison', {
-        promptId: id,
-        modelA: selectedModels.modelA,
-        modelB: selectedModels.modelB,
-      });
+      const id = promptId || prefetchedPromptId || (await getRandomPromptId());
+      const liveDataFromApi = await fetchComparison(id);
       
       setCurrentDisplayData({
         source_prompt_db_id: liveDataFromApi.prompt_db_id,
@@ -222,60 +149,57 @@ export function ModelEvaluationArena() {
         model_B_name: liveDataFromApi.model_B_name,
       });
       
-      // Only randomize on client side to avoid hydration mismatch
-      if (isClientMounted) {
-        const isResponseALeft = Math.random() < 0.5;
-        setResponses({
-          left: isResponseALeft ? liveDataFromApi.response_A : liveDataFromApi.response_B,
-          right: isResponseALeft ? liveDataFromApi.response_B : liveDataFromApi.response_A,
-        });
-        setResponseMapping({
-          left: isResponseALeft ? "A" : "B",
-          right: isResponseALeft ? "B" : "A",
-        });
-        setEvaluationStart(Date.now());
-      }
+      // Randomly assign responses to left/right for UI display
+      const isResponseALeft = Math.random() < 0.5;
+      setResponses({
+        left: isResponseALeft ? liveDataFromApi.response_A : liveDataFromApi.response_B,
+        right: isResponseALeft ? liveDataFromApi.response_B : liveDataFromApi.response_A,
+      });
+      setResponseMapping({
+        left: isResponseALeft ? "A" : "B",
+        right: isResponseALeft ? "B" : "A",
+      });
 
       if (leftResponseRef.current) leftResponseRef.current.scrollTop = 0;
       if (rightResponseRef.current) rightResponseRef.current.scrollTop = 0;
 
-      setPhase('evaluation');
-      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
-      setError(`Failed to generate comparison: ${errorMessage}`);
-      console.error("Error in generateComparison:", err);
-      setPhase('selection');
+      setError(`Failed to fetch new comparison: ${errorMessage}`);
+      console.error("Error in fetchNewLiveComparison:", err);
     } finally {
-      setLoading(false);
+      setLoading(false); // Use local loading state setter
       void prefetchNextComparison();
     }
-  };
+  }, [prefetchNextComparison, user, prefetchedPromptId]);
 
-  const handleModelSelection = (selection: { modelA: string; modelB: string }) => {
-    setSelectedModels(selection);
-    setCustomPrompt("");
-  };
+  useEffect(() => {
+    // Only fetch if user is loaded and present, or if auth is not enforced for this component path (e.g. guest mode)
+    if (!userIsLoading && user) {
+      void fetchNewLiveComparison();
+    } else if (!userIsLoading && !user) {
+      // User is loaded, but not logged in. Handled by the redirect logic below.
+      // No need to fetch if we are about to redirect.
+    }
+    // If userIsLoading, wait for user status to resolve.
+  }, [fetchNewLiveComparison, user, userIsLoading]);
 
   const handleSelection = (side: "left" | "right") => {
     if (selectedResponseFullText || !currentDisplayData) return; // Already selected or no data
-    const selectedText = side === "left" ? responses.left : responses.right;
-    setPendingSelection(selectedText);
     setPendingSelectionSide(side);
+    // You could show a confirmation modal here if desired before calling confirmSelection
+    confirmSelection(side); 
   };
 
-  const confirmSelection = async () => {
-    if (!pendingSelection || !pendingSelectionSide || !currentDisplayData) return;
+  const confirmSelection = async (selectedSide : "left" | "right") => {
+    if (!selectedSide || !currentDisplayData) return;
 
-    const selectedSide = pendingSelectionSide;
-    const selectedActualText = pendingSelection;
+    const selectedActualText = selectedSide === "left" ? responses.left : responses.right;
     const selectedOriginalModel = responseMapping[selectedSide]; // 'A' or 'B'
     const selectedModelName = selectedOriginalModel === "A" ? currentDisplayData.model_A_name : currentDisplayData.model_B_name;
 
     setSelectedResponseFullText(selectedActualText);
     setShowResultFeedback(true); // Show general feedback
-    setPendingSelection(null);
-    setPendingSelectionSide(null);
 
     // Fire confetti regardless of "correctness" as it's a preference task
     if (typeof window !== "undefined") {
@@ -284,47 +208,30 @@ export function ModelEvaluationArena() {
 
     if (user && currentDisplayData.live_generation_id) {
       try {
-        const evaluationData = {
-          prompt_id: currentDisplayData.source_prompt_db_id,
-          model_name: selectedModelName,
-          selected_response: selectedActualText,
-          ground_truth: selectedActualText,
-          is_correct: true,
+        const evaluationData: ModelEvaluation = {
+          user_id: user.id,
+          prompt_id: currentDisplayData.live_generation_id, // This is crucial: use live_generation_id
+          selected_response_text: selectedActualText,
+          selected_model_name: selectedModelName,
+          // 'ground_truth' and 'is_correct' are omitted as they don't fit this live A/B comparison mode
         };
 
         console.log("Saving live evaluation data:", JSON.stringify(evaluationData, null, 2));
 
-        const response = await fetch('/api/model-evaluations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(evaluationData),
-        });
+        const { data: savedEval, error } = await supabase
+          .from("model_evaluations")
+          .insert(evaluationData)
+          .select("id") // select id to use for rationale
+          .single();
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          console.error("Error saving live evaluation:", result);
+        if (error) {
+          // Handle potential duplicate errors if user somehow re-submits for the exact same live_generation_id
+          // This is less likely with UUIDs for live_generation_id compared to auto-incrementing prompt IDs
+          console.error("Error saving live evaluation:", error);
           setError("Failed to save your evaluation. Please try again.");
-        } else if (result.success) {
-          console.log("Live evaluation saved, ID:", result.id);
-
-          // record comparison result
-          try {
-            await fetch("/api/model-comparisons", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                modelA: currentDisplayData.model_A_name,
-                modelB: currentDisplayData.model_B_name,
-                winner: selectedModelName,
-                promptId: currentDisplayData.live_generation_id,
-              }),
-            });
-          } catch (cmpErr) {
-            console.error("Failed to save comparison", cmpErr);
-          }
-
-          setCurrentEvaluationId(result.id);
+        } else if (savedEval) {
+          console.log("Live evaluation saved, ID:", savedEval.id);
+          setCurrentEvaluationId(savedEval.id);
           setShowRationale(true); // Prompt for rationale after successful save
         }
       } catch (err) {
@@ -334,46 +241,11 @@ export function ModelEvaluationArena() {
     } else if (!user) {
       setShowRationale(true); // Still show rationale input for non-logged-in users, but it won't be saved with user_id
     }
-
-    const evalTime = Date.now() - evaluationStart;
-    const sim = similarity(responses.left, responses.right);
-    const confidence = Math.max(0, 1 - evalTime / 30000);
-    try {
-      await fetch('/api/evaluation-quality', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          evaluationTime: evalTime,
-          promptSimilarity: sim,
-          confidenceScore: confidence,
-        }),
-      });
-      await fetch('/api/activity-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activity_type: 'evaluation',
-          promptId: currentDisplayData.source_prompt_db_id,
-          modelName: selectedModelName,
-        }),
-      });
-      if (!user) {
-        void incrementAnonymousEvaluationsCount();
-      }
-    } catch (err) {
-      console.error('Failed to record quality metrics', err);
-    }
-
-    void logEvent('evaluation_confirm', {
-      model: selectedModelName,
-      promptId: currentDisplayData.source_prompt_db_id,
-    });
+    setPendingSelectionSide(null); // Clear pending selection
   };
 
   const handleNextPrompt = () => {
-    setPhase('selection');
-    setSelectedModels(null);
-    setCustomPrompt("");
+    fetchNewLiveComparison(prefetchedPromptId || undefined);
   };
 
   const saveRationale = async () => {
@@ -393,38 +265,12 @@ export function ModelEvaluationArena() {
     setIsSubmittingRationale(true);
     setRationaleError(null);
     try {
-      if (!currentDisplayData || !selectedResponseFullText) throw new Error('Missing evaluation context');
-
-      const selectedSide = selectedResponseFullText === responses.left ? 'left' : 'right';
-      const selectedOriginalModel = responseMapping[selectedSide];
-      const selectedModelName =
-        selectedOriginalModel === 'A'
-          ? currentDisplayData.model_A_name
-          : currentDisplayData.model_B_name;
-
       const rationaleData: ModelRationale = {
         evaluation_id: currentEvaluationId,
         rationale: rationale,
       };
-
-      const insertData = {
-        evaluation_id: rationaleData.evaluation_id,
-        rationale: rationaleData.rationale,
-        prompt_id: currentDisplayData.source_prompt_db_id,
-        model_name: selectedModelName,
-        selected_response: selectedResponseFullText,
-        ground_truth: selectedResponseFullText,
-        is_correct: true,
-      };
-
-      const response = await fetch('/api/model-writing-rationales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(insertData),
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to save rationale');
+      const { error } = await supabase.from("model_writing_rationales").insert(rationaleData);
+      if (error) throw error;
       
       console.log("Rationale saved for evaluation ID:", currentEvaluationId);
       setShowRationale(false);
@@ -459,142 +305,10 @@ export function ModelEvaluationArena() {
     // Show loading indicator while user status is being determined or if redirecting
     return <div className="text-center p-10">Loading user information...</div>; 
   }
-
-  // Model Selection Phase
-  if (phase === 'selection') {
-    return (
-      <div className="flex flex-col gap-6 items-center w-full">
-        <div className="w-full max-w-2xl text-center">
-          <h2 className="text-xl font-semibold mb-4">Choose Models to Compare</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Select two AI models to generate stories for comparison. The models will create responses to the same prompt, 
-            and you&apos;ll evaluate which response you prefer.
-          </p>
-        </div>
-        
-        {availableModels.length > 0 ? (
-          <ModelSelector models={availableModels} onSelect={handleModelSelection} />
-        ) : (
-          <div className="text-center p-10">Loading available models...</div>
-        )}
-
-        {/* Enhancement Options */}
-        {selectedModels && (
-          <div className="w-full max-w-2xl">
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Story Enhancement Options</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowEnhancements(!showEnhancements)}
-                  className="text-xs"
-                >
-                  {showEnhancements ? 'Hide' : 'Show'} Options
-                </Button>
-              </div>
-              
-              {showEnhancements && (
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  {/* Length */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      Story Length
-                    </label>
-                    <select
-                      value={enhancementOptions.targetLength}
-                      onChange={(e) => setEnhancementOptions(prev => ({ ...prev, targetLength: e.target.value as EnhancementOptions['targetLength'] }))}
-                      className="w-full p-1.5 text-xs border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-                    >
-                      <option value="short">Short (150-250 words)</option>
-                      <option value="medium">Medium (300-500 words)</option>
-                      <option value="long">Long (500-800 words)</option>
-                    </select>
-                  </div>
-
-                  {/* Genre */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      Genre Style
-                    </label>
-                    <select
-                      value={enhancementOptions.genre}
-                      onChange={(e) => setEnhancementOptions(prev => ({ ...prev, genre: e.target.value as EnhancementOptions['genre'] }))}
-                      className="w-full p-1.5 text-xs border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-                    >
-                      <option value="literary">Literary Fiction</option>
-                      <option value="adventure">Adventure</option>
-                      <option value="mystery">Mystery</option>
-                      <option value="romance">Romance</option>
-                      <option value="sci-fi">Science Fiction</option>
-                    </select>
-                  </div>
-
-                  {/* Tone */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      Tone
-                    </label>
-                    <select
-                      value={enhancementOptions.tone}
-                      onChange={(e) => setEnhancementOptions(prev => ({ ...prev, tone: e.target.value as EnhancementOptions['tone'] }))}
-                      className="w-full p-1.5 text-xs border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-                    >
-                      <option value="dramatic">Dramatic</option>
-                      <option value="humorous">Humorous</option>
-                      <option value="suspenseful">Suspenseful</option>
-                      <option value="heartwarming">Heartwarming</option>
-                    </select>
-                  </div>
-
-                  {/* Complexity */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      Complexity
-                    </label>
-                    <select
-                      value={enhancementOptions.complexity}
-                      onChange={(e) => setEnhancementOptions(prev => ({ ...prev, complexity: e.target.value as EnhancementOptions['complexity'] }))}
-                      className="w-full p-1.5 text-xs border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-                    >
-                      <option value="simple">Simple & Clear</option>
-                      <option value="nuanced">Nuanced</option>
-                      <option value="complex">Complex & Layered</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {selectedModels && (
-          <div className="mt-4 text-center flex flex-col items-center gap-4 w-full max-w-md">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Selected: <strong>{selectedModels.modelA}</strong> vs <strong>{selectedModels.modelB}</strong>
-            </p>
-            <textarea
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              className="w-full p-2 border rounded-md text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-              placeholder="Enter a custom prompt or leave blank for a random one"
-              rows={3}
-            />
-            <Button
-              onClick={() => generateComparison(customPrompt.trim() || undefined)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              Generate Stories
-            </Button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Generation Phase
-  if (phase === 'generating' || (loading && !currentDisplayData)) {
-    return <div className="text-center p-10">Generating stories with {selectedModels?.modelA} and {selectedModels?.modelB}...</div>;
+  
+  // If user is loaded and present, continue rendering the component
+  if (loading && !currentDisplayData) {
+    return <div className="text-center p-10">Loading new evaluation...</div>;
   }
 
   if (error) {
@@ -602,7 +316,7 @@ export function ModelEvaluationArena() {
       <Alert variant="destructive" className="mb-4">
         <AlertDescription>
           {error}
-          <Button onClick={() => setPhase('selection')} className="ml-4">Try Again</Button>
+          <Button onClick={() => void fetchNewLiveComparison()} className="ml-4">Try Again</Button>
         </AlertDescription>
       </Alert>
     );
@@ -612,7 +326,7 @@ export function ModelEvaluationArena() {
     return (
       <div className="text-center p-10">
         No prompts available. Please try again later.
-        <Button onClick={() => setPhase('selection')} className="ml-4 block mx-auto mt-2">Start Over</Button>
+        <Button onClick={() => void fetchNewLiveComparison()} className="ml-4 block mx-auto mt-2">Fetch New Prompt</Button>
       </div>
     );
   }
@@ -625,96 +339,36 @@ export function ModelEvaluationArena() {
         <div className="w-full p-4 border rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800">
           <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Prompt:</h3>
           <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{currentDisplayData.source_prompt_text}</p>
-          <div className="mt-2 text-sm text-gray-500 dark:text-gray-500">
-            Comparing: <strong>{currentDisplayData.model_A_name}</strong> vs <strong>{currentDisplayData.model_B_name}</strong>
-          </div>
         </div>
       )}
 
       {responses.left && responses.right && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-          {/* Left Response */}
-          <div className="flex flex-col gap-4">
-            <Card
-              className={`p-4 transition-all hover:shadow-lg transform ${
-                isSelectionMade
-                  ? ""
-                  : "cursor-pointer hover:ring-2 hover:ring-indigo-500 hover:scale-[1.02] active:scale-[0.98]"
-              } ${
-                pendingSelection && responses.left === pendingSelection
-                  ? "ring-2 ring-blue-500"
-                  : isSelectionMade && responses.left === selectedResponseFullText
-                  ? "ring-2 ring-indigo-500"
-                  : ""
-              }`}
-              onClick={() => !isSelectionMade && handleSelection("left")}
-            >
-              <TextPane
-                ref={leftResponseRef}
-                pairedRef={rightResponseRef}
-                text={responses.left}
-                enableHighlight
-                id="me-left-pane"
-                onHighlight={setHighlight}
-              />
-            </Card>
-          </div>
-
-          {/* Right Response */}
-          <div className="flex flex-col gap-4">
-            <Card
-              className={`p-4 transition-all hover:shadow-lg transform ${
-                isSelectionMade
-                  ? ""
-                  : "cursor-pointer hover:ring-2 hover:ring-indigo-500 hover:scale-[1.02] active:scale-[0.98]"
-              } ${
-                pendingSelection && responses.right === pendingSelection
-                  ? "ring-2 ring-blue-500"
-                  : isSelectionMade && responses.right === selectedResponseFullText
-                  ? "ring-2 ring-indigo-500"
-                  : ""
-              }`}
-              onClick={() => !isSelectionMade && handleSelection("right")}
-            >
-              <TextPane
-                ref={rightResponseRef}
-                pairedRef={leftResponseRef}
-                text={responses.right}
-                enableHighlight
-                id="me-right-pane"
-                onHighlight={setHighlight}
-              />
-            </Card>
-          </div>
+          <Card
+            ref={leftResponseRef}
+            className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer overflow-y-auto max-h-96 \
+                        ${pendingSelectionSide === "left" ? "ring-4 ring-indigo-400 dark:ring-indigo-600 border-indigo-500 dark:border-indigo-700" : "border-gray-300 dark:border-gray-700"} \
+                        ${isSelectionMade ? "opacity-70 cursor-not-allowed" : "hover:border-indigo-500 dark:hover:border-indigo-400"}`}
+            onClick={() => !isSelectionMade && handleSelection("left")}
+          >
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.left}</p>
+          </Card>
+          <Card
+            ref={rightResponseRef}
+            className={`p-4 border-2 rounded-lg shadow-sm cursor-pointer overflow-y-auto max-h-96 \
+                        ${pendingSelectionSide === "right" ? "ring-4 ring-indigo-400 dark:ring-indigo-600 border-indigo-500 dark:border-indigo-700" : "border-gray-300 dark:border-gray-700"} \
+                        ${isSelectionMade ? "opacity-70 cursor-not-allowed" : "hover:border-indigo-500 dark:hover:border-indigo-400"}`}
+            onClick={() => !isSelectionMade && handleSelection("right")}
+          >
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">{responses.right}</p>
+          </Card>
         </div>
       )}
       
-      {/* Confirmation Dialog */}
-      {pendingSelection && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
-          <Card className="w-full max-w-sm p-6">
-            <div className="flex flex-col gap-4">
-              <h3 className="text-lg font-medium">Confirm your selection?</h3>
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setPendingSelection(null);
-                    setPendingSelectionSide(null);
-                  }}
-                  className="transform transition-all hover:scale-105 active:scale-95"
-                >
-                  Keep Reading
-                </Button>
-                <Button
-                  onClick={confirmSelection}
-                  className="transform transition-all hover:scale-105 active:scale-95"
-                >
-                  Confirm
-                </Button>
-              </div>
-            </div>
-          </Card>
+      {pendingSelectionSide && !isSelectionMade && (
+        <div className="mt-4 text-center">
+          <p className="text-gray-700 dark:text-gray-300">You selected the {pendingSelectionSide} response. Confirm?</p>
+          {/* Confirmation step removed for brevity, confirmSelection is called directly from handleSelection */}
         </div>
       )}
 
@@ -729,11 +383,6 @@ export function ModelEvaluationArena() {
           <label htmlFor="rationale" className="text-md font-semibold text-gray-700 dark:text-gray-300">
             Why did you prefer this response? (Optional)
           </label>
-          {highlight && (
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              <span className="font-medium">Highlighted text:</span> &quot;{highlight}&quot;
-            </p>
-          )}
           <textarea
             id="rationale"
             value={rationale}
@@ -760,8 +409,14 @@ export function ModelEvaluationArena() {
 
       {isSelectionMade && !showRationale && (
         <Button onClick={() => handleNextPrompt()} className="mt-6 bg-green-600 hover:bg-green-700 text-white">
-          Compare New Models
+          Next Prompt
         </Button>
+      )}
+      {isPrefetching && (
+        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+          Preparing next prompt...
+        </div>
       )}
     </div>
   );

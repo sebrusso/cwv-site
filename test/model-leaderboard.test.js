@@ -35,9 +35,9 @@ test('model leaderboard returns an array of entries', async () => {
       { model_name: 'B', is_correct: true },
     ],
     human_model_evaluations: [
-      { model_name: 'A', is_correct: false },
-      { model_name: 'B', is_correct: false },
-      { model_name: 'B', is_correct: false }
+      { model_name: 'A', is_correct: false }, // Model A deception
+      { model_name: 'B', is_correct: false }, // Model B deception
+      { model_name: 'B', is_correct: false }  // Model B deception
     ],
   });
   const res = await handleModelLeaderboard(supabase);

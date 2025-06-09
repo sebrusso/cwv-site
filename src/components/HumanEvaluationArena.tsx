@@ -1,26 +1,19 @@
 "use client";
 
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TextPane } from "@/components/TextPane";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ReportContentButton } from "./ReportContentButton";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
-import { getRandomPrompt } from "@/lib/prompts";
-import { incrementAnonymousEvaluationsCount } from "@/lib/anonymousSession";
 
-
-function similarity(a: string, b: string) {
-  const setA = new Set(a.split(/\s+/));
-  const setB = new Set(b.split(/\s+/));
-  const intersection = Array.from(setA).filter((w) => setB.has(w)).length;
-  const union = new Set([...setA, ...setB]).size;
-  return union === 0 ? 0 : intersection / union;
-}
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface WritingPrompt {
   id: string;
@@ -67,11 +60,6 @@ export function HumanEvaluationArena() {
   const [showUpvotes, setShowUpvotes] = useState(false);
   const [highlight, setHighlight] = useState<string>("");
   const [showHighlightTip, setShowHighlightTip] = useState(false);
-  const [prompts, setPrompts] = useState<Pick<WritingPrompt, "id" | "prompt">[]>([]);
-  const [selectedId, setSelectedId] = useState<string | "random">("random");
-  const [isClientMounted, setIsClientMounted] = useState(false);
-
-  const [evaluationStart, setEvaluationStart] = useState<number>(0);
 
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
@@ -80,10 +68,14 @@ export function HumanEvaluationArena() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Ensure client-side only operations
-  useEffect(() => {
-    setIsClientMounted(true);
-  }, []);
+  const handleHighlight = () => {
+    if (typeof window === "undefined") return;
+    const selection = window.getSelection();
+    const text = selection ? selection.toString().trim() : "";
+    if (text) {
+      setHighlight(text);
+    }
+  };
 
   const dismissHighlightTip = () => {
     if (typeof window !== "undefined") {
@@ -123,52 +115,46 @@ export function HumanEvaluationArena() {
     }
   }, [user, profile]);
 
-  // Load prompt options when a user is authenticated
-  useEffect(() => {
-    if (!user) return;
-    const loadPrompts = async () => {
-      const { data } = await supabase
-        .from("writingprompts-pairwise-test")
-        .select("id,prompt")
-        .limit(50);
-      setPrompts(data || []);
-    };
-    loadPrompts();
-  }, [user]);
-
   const fetchRandomPrompt = async () => {
     setError(null);
     setLoading(true);
 
     try {
-      const data = await getRandomPrompt('*', true);
-      if (!data) {
+      // Get a random prompt without filtering for previously viewed ones
+      const { data, error } = await supabase
+        .from("writingprompts-pairwise-test")
+        .select("*")
+        .limit(1)
+        .order("id", { ascending: Math.random() > 0.5 });
+
+      if (error) {
+        const errorMessage =
+          error.code === "PGRST116"
+            ? "Table not found. Please check if 'writingprompts-pairwise-test' exists and you have access to it."
+            : `Database error: ${error.message}`;
+        setError(errorMessage);
+        console.error("Error details:", error);
+        setLoading(false);
+        return;
+      }
+
+      if (!data || data.length === 0) {
         setError("No prompt found. Please try again.");
         setLoading(false);
         return;
       }
 
-      // Type check to ensure data is a WritingPrompt
-      if (typeof data === 'string' || !('id' in data)) {
-        setError("Invalid prompt data. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      const promptData = data as WritingPrompt;
+      const promptData = data[0];
       setPrompt(promptData);
       setSelectedText(null);
       setFeedback(null);
 
-      // Only randomize on client side to avoid hydration mismatch
-      if (isClientMounted) {
-        const isChosenLeft = Math.random() < 0.5;
-        setTexts({
-          left: isChosenLeft ? promptData.chosen : promptData.rejected,
-          right: isChosenLeft ? promptData.rejected : promptData.chosen,
-        });
-        setEvaluationStart(Date.now());
-      }
+      // Randomly assign chosen/rejected texts to left/right
+      const isChosenLeft = Math.random() < 0.5;
+      setTexts({
+        left: isChosenLeft ? promptData.chosen : promptData.rejected,
+        right: isChosenLeft ? promptData.rejected : promptData.chosen,
+      });
 
       // Reset scroll positions
       if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
@@ -188,66 +174,10 @@ export function HumanEvaluationArena() {
     }
   };
 
-  const fetchPromptById = async (id: string) => {
-    setError(null);
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase
-        .from("writingprompts-pairwise-test")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error || !data) {
-        setError("Prompt not found. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      const promptData = data;
-      setPrompt(promptData);
-      setSelectedText(null);
-      setFeedback(null);
-
-      // Only randomize on client side to avoid hydration mismatch
-      if (isClientMounted) {
-        const isChosenLeft = Math.random() < 0.5;
-        setTexts({
-          left: isChosenLeft ? promptData.chosen : promptData.rejected,
-          right: isChosenLeft ? promptData.rejected : promptData.chosen,
-        });
-        setEvaluationStart(Date.now());
-      }
-
-      if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
-      if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
-
-      if (user && promptData.id) {
-        addViewedPrompt(promptData.id);
-      }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      setError(`Failed to fetch prompt: ${errorMessage}`);
-      console.error("Error fetching prompt:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchPrompt = async () => {
-    if (user && selectedId !== "random") {
-      await fetchPromptById(selectedId);
-    } else {
-      await fetchRandomPrompt();
-    }
-  };
-
   useEffect(() => {
-    fetchPrompt();
+    fetchRandomPrompt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, []);
 
   if (!user && !isLoading) {
     return (
@@ -309,34 +239,6 @@ export function HumanEvaluationArena() {
     setPendingSelection(null);
     setShowUpvotes(false); // Reset upvotes visibility
     setShowRationale(true);
-
-    const evalTime = Date.now() - evaluationStart;
-    const sim = similarity(texts.left, texts.right);
-    const confidence = Math.max(0, 1 - evalTime / 30000);
-    try {
-      await fetch('/api/evaluation-quality', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          evaluationTime: evalTime,
-          promptSimilarity: sim,
-          confidenceScore: confidence,
-        }),
-      });
-      await fetch('/api/activity-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activity_type: 'evaluation',
-          promptId: prompt.id,
-        }),
-      });
-      if (!user) {
-        void incrementAnonymousEvaluationsCount();
-      }
-    } catch (err) {
-      console.error('Failed to record quality metrics', err);
-    }
   };
 
   const handleNextPrompt = async () => {
@@ -358,7 +260,7 @@ export function HumanEvaluationArena() {
     setHighlight("");
 
     // Fetch next prompt
-    fetchPrompt();
+    fetchRandomPrompt();
   };
 
   const saveRationale = async () => {
@@ -425,25 +327,6 @@ export function HumanEvaluationArena() {
 
   return (
     <div className="flex flex-col items-center gap-8">
-      <div className="flex flex-wrap gap-2">
-        {user && (
-          <select
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
-            className="border p-2 rounded-md"
-          >
-            <option value="random">Random Prompt</option>
-            {prompts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.prompt.slice(0, 40)}
-              </option>
-            ))}
-          </select>
-        )}
-        <Button onClick={fetchPrompt} disabled={isLoading}>
-          {isLoading ? "Loading..." : user ? "Load" : "New Prompt"}
-        </Button>
-      </div>
       {showHighlightTip && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="w-full max-w-sm p-6">
@@ -607,9 +490,6 @@ export function HumanEvaluationArena() {
                   {prompt.prompt}
                 </h2>
               </div>
-              <div className="mt-2">
-                <ReportContentButton contentId={prompt.id} contentType="prompt" />
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -647,14 +527,15 @@ export function HumanEvaluationArena() {
                   }`}
                   onClick={() => !selectedText && handleSelection(texts.left)}
                 >
-                  <TextPane
+                  <div
+                    className="max-h-[500px] overflow-y-auto"
+                    onMouseUp={handleHighlight}
                     ref={leftTextRef}
-                    pairedRef={rightTextRef}
-                    text={texts.left}
-                    enableHighlight
-                    id="he-left-pane"
-                    onHighlight={setHighlight}
-                  />
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {texts.left}
+                    </p>
+                  </div>
                 </Card>
               </div>
 
@@ -692,14 +573,15 @@ export function HumanEvaluationArena() {
                   }`}
                   onClick={() => !selectedText && handleSelection(texts.right)}
                 >
-                  <TextPane
+                  <div
+                    className="max-h-[500px] overflow-y-auto"
+                    onMouseUp={handleHighlight}
                     ref={rightTextRef}
-                    pairedRef={leftTextRef}
-                    text={texts.right}
-                    enableHighlight
-                    id="he-right-pane"
-                    onHighlight={setHighlight}
-                  />
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {texts.right}
+                    </p>
+                  </div>
                 </Card>
               </div>
             </div>
