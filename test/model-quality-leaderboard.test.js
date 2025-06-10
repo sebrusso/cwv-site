@@ -26,8 +26,8 @@ test('model quality leaderboard returns leaderboard and matrix', async () => {
     from: () => ({
       select: async () => ({
         data: [
-          { model_a: 'A', model_b: 'B', winner: 'A' },
-          { model_a: 'A', model_b: 'B', winner: 'B' },
+          { model_a_name: 'A', model_b_name: 'B', winner: 'A' },
+          { model_a_name: 'A', model_b_name: 'B', winner: 'B' },
         ],
         error: null,
       }),
