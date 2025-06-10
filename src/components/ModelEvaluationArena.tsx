@@ -86,6 +86,7 @@ export function ModelEvaluationArena() {
   const [isSubmittingRationale, setIsSubmittingRationale] = useState(false);
   const [rationaleError, setRationaleError] = useState<string | null>(null);
   const [showResultFeedback, setShowResultFeedback] = useState(false); // To show some feedback after selection
+  const [preferredModel, setPreferredModel] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
 
   const leftResponseRef = useRef<HTMLDivElement>(null);
@@ -220,6 +221,7 @@ export function ModelEvaluationArena() {
     setShowRationale(false);
     setRationale("");
     setShowResultFeedback(false);
+    setPreferredModel(null);
     
     try {
       // Add overall timeout for the entire generation process
@@ -359,8 +361,12 @@ export function ModelEvaluationArena() {
       return;
     }
 
-    const selectedModelName = selectedOriginalModel === "A" ? currentDisplayData.model_A_name : currentDisplayData.model_B_name;
+    const selectedModelName =
+      selectedOriginalModel === "A"
+        ? currentDisplayData.model_A_name
+        : currentDisplayData.model_B_name;
 
+    setPreferredModel(selectedModelName);
     setShowResultFeedback(true); // Show general feedback
 
     // Fire confetti regardless of "correctness" as it's a preference task
@@ -759,10 +765,10 @@ export function ModelEvaluationArena() {
         </div>
       )}
 
-      {showResultFeedback && (
-         <div className="mt-4 text-center text-lg font-medium text-indigo-600 dark:text-indigo-400">
-             Thanks for your input!
-         </div>
+      {showResultFeedback && preferredModel && (
+        <div className="mt-4 text-center text-lg font-medium text-indigo-600 dark:text-indigo-400">
+          You preferred {preferredModel}.
+        </div>
       )}
 
       {isSelectionMade && showRationale && (
