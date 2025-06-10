@@ -238,7 +238,7 @@ export function HumanMachineArena() {
 
   return (
     <div className="flex flex-col gap-4 items-center">
-      {loading && <Progress value={progress} className="w-full" />}
+      {loading && <div className="w-full"><Progress value={progress} /></div>}
       <div className="flex flex-wrap gap-2">
         <select
           value={selectedId}

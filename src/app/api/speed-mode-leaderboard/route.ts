@@ -1,14 +1,9 @@
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AggregatedSpeedEntry } from '../speed-mode/route';
-import { handleSpeedModeLeaderboard as aggregate } from '../speed-mode/route';
+import type { AggregatedSpeedEntry } from '@/lib/speed-utils';
+import { handleSpeedModeLeaderboard as aggregate } from '@/lib/speed-utils';
 
 export type SpeedModeEntry = AggregatedSpeedEntry;
-
-export async function handleSpeedModeLeaderboard(supabase: SupabaseClient) {
-  return aggregate(supabase);
-}
 
 export async function GET() {
   const cookieStorePromise = cookies();
@@ -34,5 +29,5 @@ export async function GET() {
     }
   );
 
-  return handleSpeedModeLeaderboard(supabase);
+  return aggregate(supabase);
 }

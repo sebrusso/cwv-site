@@ -32,8 +32,8 @@ async function handleModelComparison(
   // userId is now either a real user ID or an anonymous session ID
   const { error } = await supabase.from('model_comparisons').insert({
     user_id: userId,
-    model_a: modelA,
-    model_b: modelB,
+    model_a_name: modelA,
+    model_b_name: modelB,
     winner,
     prompt_id: promptId,
   });

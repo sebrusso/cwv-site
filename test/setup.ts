@@ -11,6 +11,12 @@ afterEach(() => {
   cleanup();
 });
 
+// Mock Next.js navigation
+vi.mock('next/navigation', () => {
+  const actual = vi.importActual('next-router-mock/navigation');
+  return actual;
+});
+
 // Mock window.matchMedia
 Object.defineProperty(window, "matchMedia", {
   writable: true,

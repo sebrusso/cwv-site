@@ -538,7 +538,7 @@ export function ModelEvaluationArena() {
                 <label className="block text-sm font-medium mb-2">Story Length</label>
                 <select
                   value={enhancementOptions.targetLength}
-                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, targetLength: e.target.value as EnhancementOptions['targetLength'] }))}
+                  onChange={(e) => setEnhancementOptions((prev: EnhancementOptions) => ({ ...prev, targetLength: e.target.value as EnhancementOptions['targetLength'] }))}
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="short">Short</option>
@@ -551,7 +551,7 @@ export function ModelEvaluationArena() {
                 <label className="block text-sm font-medium mb-2">Genre</label>
                 <select
                   value={enhancementOptions.genre}
-                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, genre: e.target.value as EnhancementOptions['genre'] }))}
+                  onChange={(e) => setEnhancementOptions((prev: EnhancementOptions) => ({ ...prev, genre: e.target.value as EnhancementOptions['genre'] }))}
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="literary">Literary</option>
@@ -566,7 +566,7 @@ export function ModelEvaluationArena() {
                 <label className="block text-sm font-medium mb-2">Tone</label>
                 <select
                   value={enhancementOptions.tone}
-                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, tone: e.target.value as EnhancementOptions['tone'] }))}
+                  onChange={(e) => setEnhancementOptions((prev: EnhancementOptions) => ({ ...prev, tone: e.target.value as EnhancementOptions['tone'] }))}
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="dramatic">Dramatic</option>
@@ -580,7 +580,7 @@ export function ModelEvaluationArena() {
                 <label className="block text-sm font-medium mb-2">Complexity</label>
                 <select
                   value={enhancementOptions.complexity}
-                  onChange={(e) => setEnhancementOptions(prev => ({ ...prev, complexity: e.target.value as EnhancementOptions['complexity'] }))}
+                  onChange={(e) => setEnhancementOptions((prev: EnhancementOptions) => ({ ...prev, complexity: e.target.value as EnhancementOptions['complexity'] }))}
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="simple">Simple</option>

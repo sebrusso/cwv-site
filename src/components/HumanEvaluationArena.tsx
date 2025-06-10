@@ -398,7 +398,7 @@ export function HumanEvaluationArena() {
             className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
             <option value="random">Random prompt</option>
-            {prompts.map((p) => (
+            {prompts.map((p: Pick<WritingPrompt, "id" | "prompt">) => (
               <option key={p.id} value={p.id}>
                 {p.prompt.slice(0, 60)}...
               </option>

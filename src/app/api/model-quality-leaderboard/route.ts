@@ -3,10 +3,28 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-interface ComparisonRow {
-  model_a: string;
-  model_b: string;
+interface ModelComparison {
+  model_a_name: string;
+  model_b_name: string;
   winner: string;
+}
+
+interface ModelEvaluation {
+  model_name: string;
+  is_correct: boolean;
+}
+
+interface HumanModelEvaluation {
+  model_name: string;
+  is_correct: boolean;
+}
+
+interface ModelStats {
+  wins: number;
+  losses: number;
+  humanCorrect: number;
+  humanTotal: number;
+  humanDeceptions: number;
 }
 
 export interface QualityLeaderboardEntry {
@@ -27,25 +45,44 @@ function recordWin(matrix: Record<string, Record<string, number>>, winner: strin
 }
 
 async function handleModelQualityLeaderboard(supabase: SupabaseClient) {
-  const { data, error } = await supabase
+  // Fetch model_comparisons
+  const { data: comparisons, error: compError } = await supabase
     .from('model_comparisons')
-    .select('model_a,model_b,winner');
+    .select('model_a_name,model_b_name,winner');
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (compError) {
+    return NextResponse.json({ error: compError.message }, { status: 500 });
   }
 
-  const stats: Record<string, { wins: number; losses: number }> = {};
+  // Fetch model_evaluations
+  const { data: evaluations, error: evalError } = await supabase
+    .from('model_evaluations')
+    .select('model_name,is_correct');
+
+  if (evalError) {
+    return NextResponse.json({ error: evalError.message }, { status: 500 });
+  }
+
+  // Fetch human_model_evaluations
+  const { data: humanEvals, error: humanError } = await supabase
+    .from('human_model_evaluations')
+    .select('model_name,is_correct');
+
+  if (humanError) {
+    return NextResponse.json({ error: humanError.message }, { status: 500 });
+  }
+
+  const stats: Record<string, ModelStats> = {};
   const matrix: Record<string, Record<string, number>> = {};
 
-  for (const row of data as ComparisonRow[]) {
-    const a = row.model_a;
-    const b = row.model_b;
-    const winner =
-      row.winner === 'A' ? a : row.winner === 'B' ? b : row.winner;
+  // Process model_comparisons
+  for (const row of (comparisons as ModelComparison[]) || []) {
+    const a = row.model_a_name;
+    const b = row.model_b_name;
+    const winner = row.winner;
 
-    if (!stats[a]) stats[a] = { wins: 0, losses: 0 };
-    if (!stats[b]) stats[b] = { wins: 0, losses: 0 };
+    if (!stats[a]) stats[a] = { wins: 0, losses: 0, humanCorrect: 0, humanTotal: 0, humanDeceptions: 0 };
+    if (!stats[b]) stats[b] = { wins: 0, losses: 0, humanCorrect: 0, humanTotal: 0, humanDeceptions: 0 };
 
     if (winner === a) {
       stats[a].wins++;
@@ -55,6 +92,30 @@ async function handleModelQualityLeaderboard(supabase: SupabaseClient) {
       stats[b].wins++;
       stats[a].losses++;
       recordWin(matrix, b, a);
+    }
+  }
+
+  // Process model_evaluations
+  for (const row of (evaluations as ModelEvaluation[]) || []) {
+    const model = row.model_name;
+    if (!stats[model]) {
+      stats[model] = { wins: 0, losses: 0, humanCorrect: 0, humanTotal: 0, humanDeceptions: 0 };
+    }
+    if (row.is_correct) {
+      stats[model].humanCorrect++;
+    }
+    stats[model].humanTotal++;
+  }
+
+  // Process human_model_evaluations
+  for (const row of (humanEvals as HumanModelEvaluation[]) || []) {
+    const model = row.model_name;
+    if (!stats[model]) {
+      stats[model] = { wins: 0, losses: 0, humanCorrect: 0, humanTotal: 0, humanDeceptions: 0 };
+    }
+    if (!row.is_correct) {
+      // A human deception means the human guess was incorrect
+      stats[model].humanDeceptions++;
     }
   }
 

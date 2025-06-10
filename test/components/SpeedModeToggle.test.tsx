@@ -1,10 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SpeedModeToggle } from '@/components/SpeedModeToggle';
+import { vi } from 'vitest';
 
 describe('SpeedModeToggle', () => {
   it('renders both toggle options', () => {
-    const mockOnToggle = jest.fn();
+    const mockOnToggle = vi.fn();
     render(<SpeedModeToggle isSpeedMode={false} onToggle={mockOnToggle} />);
     
     expect(screen.getByText('Regular')).toBeInTheDocument();
@@ -12,7 +13,7 @@ describe('SpeedModeToggle', () => {
   });
 
   it('calls onToggle when clicking speed mode button', () => {
-    const mockOnToggle = jest.fn();
+    const mockOnToggle = vi.fn();
     render(<SpeedModeToggle isSpeedMode={false} onToggle={mockOnToggle} />);
     
     fireEvent.click(screen.getByText('Speed Mode'));
@@ -20,7 +21,7 @@ describe('SpeedModeToggle', () => {
   });
 
   it('calls onToggle when clicking regular mode button', () => {
-    const mockOnToggle = jest.fn();
+    const mockOnToggle = vi.fn();
     render(<SpeedModeToggle isSpeedMode={true} onToggle={mockOnToggle} />);
     
     fireEvent.click(screen.getByText('Regular'));
@@ -28,7 +29,7 @@ describe('SpeedModeToggle', () => {
   });
 
   it('shows correct active state for speed mode', () => {
-    const mockOnToggle = jest.fn();
+    const mockOnToggle = vi.fn();
     render(<SpeedModeToggle isSpeedMode={true} onToggle={mockOnToggle} />);
     
     const speedModeButton = screen.getByText('Speed Mode').closest('button');
@@ -36,7 +37,7 @@ describe('SpeedModeToggle', () => {
   });
 
   it('shows correct active state for regular mode', () => {
-    const mockOnToggle = jest.fn();
+    const mockOnToggle = vi.fn();
     render(<SpeedModeToggle isSpeedMode={false} onToggle={mockOnToggle} />);
     
     const regularButton = screen.getByText('Regular').closest('button');

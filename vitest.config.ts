@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
 
   return {
-    plugins: [react()],
+    plugins: [react()] as any,
     test: {
       environment: "jsdom",
       setupFiles: ["./test/setup.ts"],

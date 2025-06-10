@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 async function handleModelLeaderboard(supabase: SupabaseClient) {
   const { data: comparisonData, error: compErr } = await supabase
     .from('model_comparisons')
-    .select('model_a,model_b,winner');
+    .select('model_a_name,model_b_name,winner');
 
   if (compErr) {
     console.error('Error fetching model_comparisons:', compErr);
@@ -29,8 +29,8 @@ async function handleModelLeaderboard(supabase: SupabaseClient) {
 
   // Process model_comparisons
   for (const row of comparisonData || []) {
-    const modelA = (row as { model_a: string }).model_a;
-    const modelB = (row as { model_b: string }).model_b;
+    const modelA = (row as { model_a_name: string }).model_a_name;
+    const modelB = (row as { model_b_name: string }).model_b_name;
     const winner = (row as { winner: string }).winner;
 
     if (!stats[modelA]) stats[modelA] = { wins: 0, losses: 0, humanDeceptions: 0 };

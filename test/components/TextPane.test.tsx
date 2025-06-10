@@ -13,7 +13,7 @@ describe("TextPane", () => {
     render(<TextPane text={text} id="test-pane" />);
     
     expect(screen.getByText(text)).toBeInTheDocument();
-    expect(screen.getByText("3 words,")).toBeInTheDocument();
+    expect(screen.getByText(/3\s+words/)).toBeInTheDocument();
   });
 
   it("syncs scroll between paired panes", () => {
@@ -107,7 +107,8 @@ describe("TextPane", () => {
 
   it("shows/hides expand button based on text length", async () => {
     const user = userEvent.setup();
-    const longText = Array(50).fill("Sample text").join("\n");
+    // Create text with more than 200 words to trigger the Show More button
+    const longText = Array(101).fill("Sample text content").join("\n");
 
     const { rerender } = render(
       <TextPane
@@ -116,7 +117,7 @@ describe("TextPane", () => {
       />
     );
 
-    expect(screen.queryByText("Show More")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Show More/)).not.toBeInTheDocument();
 
     rerender(
       <TextPane
@@ -125,10 +126,10 @@ describe("TextPane", () => {
       />
     );
 
-    const showMoreButton = screen.getByText("Show More");
+    const showMoreButton = screen.getByText(/Show More/);
     expect(showMoreButton).toBeInTheDocument();
 
     await user.click(showMoreButton);
-    expect(screen.getByText("Show Less")).toBeInTheDocument();
+    expect(screen.getByText(/Show Less/)).toBeInTheDocument();
   });
 });
