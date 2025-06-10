@@ -146,7 +146,8 @@
   "api": {
     "rateLimit": {
       "enabled": true,
-      "maxRequests": 100,
+      "userMaxRequests": 100,
+      "anonMaxRequests": 20,
       "windowMs": 900000
     },
     "caching": {

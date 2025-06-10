@@ -62,7 +62,8 @@ export interface ServerAppConfig {
   api: {
     rateLimit: {
       enabled: boolean;
-      maxRequests: number;
+      userMaxRequests: number;
+      anonMaxRequests: number;
       windowMs: number;
     };
     caching: {
