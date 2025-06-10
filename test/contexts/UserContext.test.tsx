@@ -3,14 +3,24 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { UserProvider, useUser } from "@/contexts/UserContext";
 import userEvent from "@testing-library/user-event";
 
+// Mock the auth utils to ensure auth is not bypassed in tests
+vi.mock("@/lib/auth-utils", () => ({
+  shouldBypassAuth: vi.fn().mockReturnValue(false),
+  getMockAuthData: vi.fn().mockReturnValue({
+    user: null,
+    session: null,
+    profile: null
+  })
+}));
+
 // Mock Supabase client
 vi.mock("@/lib/supabase/client", () => ({
   supabase: {
     auth: {
-      signUp: vi.fn(),
-      signInWithOtp: vi.fn(),
-      signInWithPassword: vi.fn(),
-      signOut: vi.fn(),
+      signUp: vi.fn().mockResolvedValue({ data: { user: null, session: null }, error: null }),
+      signInWithOtp: vi.fn().mockResolvedValue({ error: null }),
+      signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
+      signOut: vi.fn().mockResolvedValue({}),
       getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
@@ -26,6 +36,12 @@ vi.mock("@/lib/supabase/client", () => ({
   }
 }));
 
+// Mock fetch for activity logging
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ success: true })
+});
+
 // Test component to access user context
 function TestComponent() {
   const { signUp, signIn, signOut } = useUser();
@@ -39,8 +55,11 @@ function TestComponent() {
 }
 
 describe("UserContext", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Reset the shouldBypassAuth mock to return false
+    const authUtils = await import("@/lib/auth-utils");
+    vi.mocked(authUtils.shouldBypassAuth).mockReturnValue(false);
   });
 
   it("handles sign up with correct redirect URL", async () => {
@@ -59,7 +78,8 @@ describe("UserContext", () => {
       email: "test@example.com",
       password: "password",
       options: {
-        emailRedirectTo: "http://localhost:3000/auth/callback"
+        emailRedirectTo: "http://localhost:3000/auth/callback",
+        data: {}
       }
     });
   });
