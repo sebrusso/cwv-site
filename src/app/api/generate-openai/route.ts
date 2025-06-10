@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { isValidLength } from '../../../lib/utils';
 import { buildUnifiedChatRequest } from '../../../lib/ai/unifiedRequestBuilder';
 import { generateText } from '../../../lib/models/aiService';
 import { getSystemInstruction } from '../../../lib/systemInstructions';
 import { countWords, countParagraphs } from '../../../lib/text-utils.js';
+import { getUserIdForApi } from '@/lib/auth-utils';
+import { getServerConfig } from '@/lib/server-config';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
 async function handleGenerateOpenAI(
   fetchFn: typeof fetch,
@@ -91,6 +96,52 @@ async function handleGenerateOpenAI(
 export async function POST(req: Request) {
   try {
     const { prompt, model, params, referenceStory } = await req.json();
+
+    const cookieStorePromise = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: async () => (await cookieStorePromise).getAll(),
+          setAll: async (
+            cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>
+          ) => {
+            try {
+              const store = await cookieStorePromise;
+              cookiesToSet.forEach(({ name, value, options }) => {
+                store.set(name, value, options as CookieOptions);
+              });
+            } catch {
+              // ignore cookie errors
+            }
+          },
+        }
+      }
+    );
+
+    const userId = await getUserIdForApi(supabase);
+    const cookieStore = await cookieStorePromise;
+    const anonId =
+      cookieStore.get('anonymous_session_id')?.value ||
+      cookieStore.get('anonymousSessionId')?.value ||
+      null;
+
+    const id = userId || anonId || req.headers.get('x-forwarded-for') || 'unknown';
+    const isAnon = !userId;
+
+    const cfg = getServerConfig().api.rateLimit;
+    if (
+      cfg.enabled &&
+      !checkRateLimit(id, isAnon, {
+        userMax: cfg.userMaxRequests,
+        anonMax: cfg.anonMaxRequests,
+        windowMs: cfg.windowMs,
+      })
+    ) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
+
     return handleGenerateOpenAI(fetch, { prompt, model, params, referenceStory });
   } catch (err) {
     console.error(err);
