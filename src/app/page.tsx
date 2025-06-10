@@ -11,9 +11,23 @@ export default function HomePage() {
         <h1 className="text-3xl font-bold tracking-tight">
           Creative Writing Evaluation Arena
         </h1>
-        <p className="text-muted-foreground">
-          Explore how humans judge creative writing and help us study human vs AI storytelling.
+        <p className="text-muted-foreground space-y-2">
+          <span className="block font-medium">Help us benchmark creativity.</span>
+          <span>
+            LitBench is the first open benchmark and dataset for reliable evaluation of
+            human- and AI-written stories. By casting your vote in the Arena, you supply
+            hard-to-get preference data that powers the LitBench paper and our open-source
+            reward models.
+          </span>
         </p>
+        <div className="flex justify-center gap-2">
+          <Link href="/paper.pdf">
+            <Button size="sm" variant="secondary">Read the Paper</Button>
+          </Link>
+          <Link href="/resources">
+            <Button size="sm" variant="secondary">Dataset &amp; Models</Button>
+          </Link>
+        </div>
       </section>
 
       <SignupCTA />
@@ -25,6 +39,11 @@ export default function HomePage() {
       </div>
 
       <section className="space-y-4">
+        <p className="text-sm text-muted-foreground text-center">
+          How your votes help &ndash; Every comparison you make is logged into
+          LitBench’s 43 k-pair training set and 2.5 k-pair held-out benchmark,
+          letting us measure and improve automated judges of creative writing.
+        </p>
         <h2 className="text-xl font-medium text-center">Main Features</h2>
         <p className="text-sm text-muted-foreground text-center mb-4">
           Choose an evaluation mode to get started.
@@ -43,6 +62,9 @@ export default function HomePage() {
             <Button variant="secondary" size="lg">Model Evaluation</Button>
           </Link>
         </div>
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          LitBench paper accepted at NeurIPS 2025, Dataset &amp; code MIT-licensed.
+        </p>
       </section>
 
       <footer className="text-center text-sm text-muted-foreground space-y-1">

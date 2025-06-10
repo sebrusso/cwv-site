@@ -20,7 +20,8 @@ export default function ModeCardLinks() {
             <Badge className="whitespace-nowrap">Recommended</Badge>
           </div>
           <CardDescription>
-            Guess whether the text was written by a human or an AI model.
+            Guess the author, train our models. Which passage was written by a
+            human?
           </CardDescription>
         </CardHeader>
         <CardFooter>
@@ -34,7 +35,7 @@ export default function ModeCardLinks() {
         <CardHeader>
           <CardTitle>Human vs Human</CardTitle>
           <CardDescription>
-            Pick which human-written text is higher quality.
+            Crowdsource literary taste. Pick the stronger human-written story.
           </CardDescription>
         </CardHeader>
         <CardFooter>
@@ -48,7 +49,8 @@ export default function ModeCardLinks() {
         <CardHeader>
           <CardTitle>Model vs Model</CardTitle>
           <CardDescription>
-            Compare outputs from two AI models side by side.
+            Stress-test AI storytellers. Decide which model tells the better
+            tale.
           </CardDescription>
         </CardHeader>
         <CardFooter>
@@ -63,7 +65,8 @@ export default function ModeCardLinks() {
           <CardHeader>
             <CardTitle>Leaderboard</CardTitle>
             <CardDescription>
-              View model rankings based on user evaluations.
+              See what the data says so far. Live rankings from thousands of
+              judgments.
             </CardDescription>
           </CardHeader>
           <CardFooter>
@@ -79,7 +82,8 @@ export default function ModeCardLinks() {
           <CardHeader>
             <CardTitle>Dashboard</CardTitle>
             <CardDescription>
-              See your personal evaluation statistics.
+              Your impact stats. Track accuracy, streaks, and contribution
+              badges.
             </CardDescription>
           </CardHeader>
           <CardFooter>
