@@ -11,11 +11,15 @@ export interface ClientConfig {
   enableDataset: boolean;
   showHelpButton: boolean;
   disableAuthentication: boolean;
+  showDashboardButton: boolean;
+  showSpeedModeToggle: boolean;
+  showScoreDisplay: boolean;
 }
 
 // Default client configuration - these values should match app-config.json defaults
+// Updated for hybrid authentication mode: anonymous users can access features, but authentication is enabled
 export const clientConfig: ClientConfig = {
-  debugMode: false,
+  debugMode: true, // Temporarily enable debug mode to diagnose the sign out issue
   enableDashboard: true,
   showDashboardLink: true,
   enableLeaderboard: true,
@@ -23,7 +27,10 @@ export const clientConfig: ClientConfig = {
   enableResources: true,
   enableDataset: true,
   showHelpButton: true,
-  disableAuthentication: true,
+  disableAuthentication: false, // Changed from true to enable hybrid authentication mode
+  showDashboardButton: false,
+  showSpeedModeToggle: false,
+  showScoreDisplay: false,
 };
 
 // Legacy export for backward compatibility

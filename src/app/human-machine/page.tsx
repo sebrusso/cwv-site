@@ -9,6 +9,7 @@ import { HelpButton } from '@/components/HelpButton';
 import { UserProfileButton } from '@/components/UserProfileButton';
 import { UserScoreDisplay } from '@/components/UserScoreDisplay';
 import { Info } from 'lucide-react';
+import { config } from '@/config';
 
 export default function HumanMachinePage() {
   const [isSpeedMode, setIsSpeedMode] = useState(false);
@@ -34,7 +35,9 @@ export default function HumanMachinePage() {
             }
           </div>
           <div className="flex justify-center sm:justify-end gap-2">
-            <SpeedModeToggle isSpeedMode={isSpeedMode} onToggle={setIsSpeedMode} />
+            {config.showSpeedModeToggle && (
+              <SpeedModeToggle isSpeedMode={isSpeedMode} onToggle={setIsSpeedMode} />
+            )}
             <WritingTypeToggle />
           </div>
         </div>

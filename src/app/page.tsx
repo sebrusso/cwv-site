@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import ModeCardLinks from "@/components/ModeCardLinks";
 import { authors } from "@/lib/authors";
 import { SignupCTA } from "@/components/SignupCTA";
+import { SignupEncouragement } from "@/components/SignupEncouragement";
 
 export default function HomePage() {
   return (
@@ -32,6 +33,8 @@ export default function HomePage() {
 
       <SignupCTA />
 
+      <SignupEncouragement trigger="banner" />
+
       <div className="flex justify-center gap-4">
         <Link href="/resources">
           <Button size="lg">Resources</Button>
@@ -41,7 +44,7 @@ export default function HomePage() {
       <section className="space-y-4">
         <p className="text-sm text-muted-foreground text-center">
           How your votes help &ndash; Every comparison you make is logged into
-          LitBench’s 43 k-pair training set and 2.5 k-pair held-out benchmark,
+          LitBench's 43 k-pair training set and 2.5 k-pair held-out benchmark,
           letting us measure and improve automated judges of creative writing.
         </p>
         <h2 className="text-xl font-medium text-center">Main Features</h2>
@@ -63,7 +66,7 @@ export default function HomePage() {
           </Link>
         </div>
         <p className="text-xs text-muted-foreground text-center mt-4">
-          LitBench paper accepted at NeurIPS 2025, Dataset &amp; code MIT-licensed.
+          LitBench paper submitted at NeurIPS 2025, Dataset &amp; code MIT-licensed.
         </p>
       </section>
 

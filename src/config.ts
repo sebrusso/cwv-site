@@ -9,10 +9,14 @@ export interface AppConfig {
   enableDataset: boolean;
   showHelpButton: boolean;
   disableAuthentication: boolean;
+  showDashboardButton: boolean;
+  showSpeedModeToggle: boolean;
+  showScoreDisplay: boolean;
 }
 
 // Configuration values - these should match your config/app-config.json
 // but are inlined here for client-side compatibility
+// Updated for hybrid authentication mode: anonymous users can access features, but authentication is enabled
 export const config: AppConfig = {
   debugMode: false,
   enableDashboard: true,
@@ -22,5 +26,10 @@ export const config: AppConfig = {
   enableResources: true,
   enableDataset: true,
   showHelpButton: true,
-  disableAuthentication: true,
+  disableAuthentication: false, // Changed from true to enable hybrid authentication mode
+  showDashboardButton: false,
+  showSpeedModeToggle: false,
+  showScoreDisplay: false,
 };
+
+export default config;
