@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { handleApiAuth } from '@/lib/auth-utils';
 
 async function handleHumanModelEvaluation(
-  supabase: SupabaseClient,
+  req: Request,
   { prompt_id, is_correct, model_name = '' }: { prompt_id: string; is_correct: boolean; model_name?: string },
 ) {
-  const { userId, isAuthenticated } = await handleApiAuth(supabase);
+  const { userId, isAuthenticated, supabase } = await handleApiAuth(req);
 
   if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -32,31 +29,9 @@ async function handleHumanModelEvaluation(
 }
 
 export async function POST(req: Request) {
-  const cookieStorePromise = cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: async () => (await cookieStorePromise).getAll(),
-        setAll: async (
-          cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>
-        ) => {
-          try {
-            const store = await cookieStorePromise;
-            cookiesToSet.forEach(({ name, value, options }) => {
-              store.set(name, value, options as CookieOptions);
-            });
-          } catch {
-            // ignore
-          }
-        },
-      },
-    }
-  );
   try {
     const { promptId, modelName = '', guessCorrect } = await req.json();
-    return handleHumanModelEvaluation(supabase, {
+    return handleHumanModelEvaluation(req, {
       prompt_id: promptId,
       model_name: modelName,
       is_correct: guessCorrect,

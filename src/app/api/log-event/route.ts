@@ -1,23 +1,49 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { handleApiAuth } from '@/lib/auth-utils';
 
 async function handleLogEvent(
-  supabase: SupabaseClient,
-  admin: SupabaseClient,
+  req: Request,
   { eventType, eventData }: { eventType: string; eventData?: unknown }
 ) {
-  const { userId, isAuthenticated } = await handleApiAuth(supabase);
-  
-  if (!isAuthenticated) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let userId: string | null = null;
+  const cookieStore = await cookies();
+
+  // First, try to get user from bearer token
+  const authHeader = req.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      userId = user.id;
+    }
+  }
+
+  // If no user from token, try to get anonymous session from cookies
+  if (!userId) {
+    userId = cookieStore.get('anonymous_session_id')?.value || null;
   }
   
-  // userId is now either a real user ID or an anonymous session ID
-  console.log('Attempting to insert event:', { user_id: userId, activity_type: eventType, activity_data: eventData });
+  // If still no userId, generate an anonymous session ID
+  if (!userId) {
+    userId = `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    cookieStore.set('anonymous_session_id', userId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365 // 1 year
+    });
+  }
+
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
   
   const { error } = await admin.from('user_activity_log').insert({
     user_id: userId,
@@ -33,36 +59,8 @@ async function handleLogEvent(
 
 export async function POST(req: Request) {
   try {
-    const cookieStorePromise = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: async () => (await cookieStorePromise).getAll(),
-          setAll: async (
-            cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>
-          ) => {
-            try {
-              const store = await cookieStorePromise;
-              cookiesToSet.forEach(({ name, value, options }) => {
-                store.set(name, value, options as CookieOptions);
-              });
-            } catch {
-              // ignore cookie errors
-            }
-          },
-        },
-      }
-    );
-
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!,
-    );
-
     const body = await req.json();
-    return handleLogEvent(supabase, admin, {
+    return handleLogEvent(req, {
       eventType: body.eventType,
       eventData: body.eventData,
     });

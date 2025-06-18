@@ -1,8 +1,5 @@
-import { type User, type Session, type SupabaseClient, createClient } from '@supabase/supabase-js';
-import { type CookieOptions, createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { type User, type Session } from '@supabase/supabase-js';
 import { getAnonymousSessionId } from './anonymousSession';
-import { isAuthenticationDisabled } from './server-config';
 
 // Mock user data for when authentication is disabled
 export const MOCK_USER_ID = 'mock-user-id';
@@ -50,8 +47,11 @@ export const getMockAuthData = () => ({
   profile: createMockProfile(),
 });
 
+// Get config from client-side config
+import { config } from '@/lib/config-client';
+
 export const shouldBypassAuth = () => {
-  return isAuthenticationDisabled();
+  return config.disableAuthentication;
 };
 
 /**
@@ -59,7 +59,7 @@ export const shouldBypassAuth = () => {
  * In hybrid mode, anonymous users can access features but are encouraged to sign up
  */
 export const isHybridAuthMode = () => {
-  return !isAuthenticationDisabled();
+  return !config.disableAuthentication;
 };
 
 /**
@@ -170,101 +170,6 @@ export const clearAuthState = () => {
     console.log('Auth state cleared completely');
   }
 };
-
-// Helper function for API routes to get user ID (real or anonymous session ID)
-export const getUserIdForApi = async (supabase: SupabaseClient): Promise<string | null> => {
-  if (shouldBypassAuth()) {
-    return getEffectiveUserIdForServer();
-  }
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  
-  return session?.user?.id || null;
-};
-
-// This function handles API authentication and works for both real users and anonymous sessions.
-export async function handleApiAuth(
-  req: Request
-): Promise<{
-  userId: string | null;
-  error: Response | null;
-  isAuthenticated: boolean;
-  supabase: SupabaseClient;
-}> {
-  const cookieStore = await cookies();
-  const authHeader = req.headers.get('authorization');
-  let supabase: SupabaseClient;
-
-  // Create a Supabase client based on the available credentials
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
-    );
-  } else {
-    supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get: (name: string) => cookieStore.get(name)?.value,
-          set: (name: string, value: string, options: CookieOptions) => {
-            cookieStore.set(name, value, options);
-          },
-          remove: (name: string, options: CookieOptions) => {
-            cookieStore.set(name, '', options);
-          },
-        },
-      }
-    );
-  }
-
-  // Get user from the created client
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    if (isAuthenticationDisabled()) {
-      // In dev mode with auth disabled, use a mock user ID
-      return {
-        userId: MOCK_USER_ID,
-        error: null,
-        isAuthenticated: true,
-        supabase,
-      };
-    }
-    // For anonymous users, we check for an anonymous session ID
-    const anonymousId = cookieStore.get('anonymous_session_id')?.value;
-    if (anonymousId) {
-      return { userId: anonymousId, error: null, isAuthenticated: true, supabase };
-    }
-    return {
-      userId: null,
-      error: new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-      }),
-      isAuthenticated: false,
-      supabase,
-    };
-  }
-
-  // If we have a real user, we're authenticated.
-  return { userId: user.id, error: null, isAuthenticated: true, supabase };
-}
-
-// This helper is for API routes that need an admin client.
-export function getSupabaseAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!
-  );
-}
 
 /**
  * Check if we're in development mode

@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
 import { ModelSelector } from "@/components/ModelSelector";
 import { TextPane } from "@/components/TextPane";
-import { shouldBypassAuth } from "@/lib/auth-utils";
+import { shouldBypassAuth, isHybridAuthMode } from "@/lib/auth-utils-client";
 
 // Initialize Supabase client (used for client-side reads if any, and by old logic if not fully removed)
 const supabase = createClient(
@@ -483,21 +483,22 @@ export function ModelEvaluationArena() {
 
   // --- UI Rendering ---
   // Auth Guard: Redirect to login if user is not loaded or not logged in
-  // But only if authentication is enabled
+  // But only if authentication is enabled and not in hybrid mode
   const authIsBypassed = shouldBypassAuth();
+  const isHybridMode = isHybridAuthMode();
   
   useEffect(() => {
-    console.log("🔐 Auth check - userIsLoading:", userIsLoading, "user:", !!user, "authBypass:", authIsBypassed);
-    if (!authIsBypassed && !userIsLoading && !user) {
+    console.log("🔐 Auth check - userIsLoading:", userIsLoading, "user:", !!user, "authBypass:", authIsBypassed, "hybridMode:", isHybridMode);
+    if (!authIsBypassed && !isHybridMode && !userIsLoading && !user) {
       console.log("🚪 Redirecting to login");
       router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [user, userIsLoading, router, pathname, authIsBypassed]);
+  }, [user, userIsLoading, router, pathname, authIsBypassed, isHybridMode]);
 
-  console.log("🔍 Component render check - userIsLoading:", userIsLoading, "user:", !!user, "authBypass:", authIsBypassed);
+  console.log("🔍 Component render check - userIsLoading:", userIsLoading, "user:", !!user, "authBypass:", authIsBypassed, "hybridMode:", isHybridMode);
   
-  // Only show loading if auth is NOT bypassed and we're still loading user info
-  if (!authIsBypassed && (userIsLoading || (!user && !userIsLoading))) {
+  // Only show loading if auth is NOT bypassed and NOT in hybrid mode and we're still loading user info
+  if (!authIsBypassed && !isHybridMode && (userIsLoading || (!user && !userIsLoading))) {
     // Show loading indicator while user status is being determined or if redirecting
     console.log("⏸️ Showing auth loading screen");
     return <div className="text-center p-10">Loading user information...</div>; 

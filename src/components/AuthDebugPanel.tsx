@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/UserContext";
-import { clearAuthState } from "@/lib/auth-utils";
+import { clearAuthState } from "@/lib/auth-utils-client";
 import { config } from "@/lib/config-client";
 
 export function AuthDebugPanel() {

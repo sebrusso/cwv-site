@@ -43,7 +43,7 @@ export function NavigationBar() {
           Leaderboard
         </Link>
       )}
-      {config.showDashboardLink && config.enableDashboard && (
+      {config.showDashboardButton && config.showDashboardLink && config.enableDashboard && (
         <Link
           href="/dashboard"
           className={linkClass("/dashboard")}

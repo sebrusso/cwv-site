@@ -44,7 +44,7 @@ export default function HomePage() {
       <section className="space-y-4">
         <p className="text-sm text-muted-foreground text-center">
           How your votes help &ndash; Every comparison you make is logged into
-          LitBench's 43 k-pair training set and 2.5 k-pair held-out benchmark,
+          LitBench&apos;s 43 k-pair training set and 2.5 k-pair held-out benchmark,
           letting us measure and improve automated judges of creative writing.
         </p>
         <h2 className="text-xl font-medium text-center">Main Features</h2>

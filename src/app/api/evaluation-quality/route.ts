@@ -4,12 +4,6 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { handleApiAuth } from '@/lib/auth-utils';
 
-interface MetricPayload {
-  evaluationTime: number;
-  promptSimilarity: number;
-  confidenceScore: number;
-}
-
 async function getClient() {
   const cookieStorePromise = cookies();
   return createServerClient(
@@ -36,14 +30,14 @@ async function getClient() {
 }
 
 async function handleEvaluationQuality(
-  supabase: SupabaseClient,
+  req: Request,
   payload: {
     evaluationTime: number;
     promptSimilarity: number;
     confidenceScore: number;
   },
 ) {
-  const { userId, isAuthenticated } = await handleApiAuth(supabase);
+  const { userId, isAuthenticated, supabase } = await handleApiAuth(req);
 
   if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -93,9 +87,12 @@ async function handleGetQuality(supabase: SupabaseClient) {
 }
 
 export async function POST(req: Request) {
-  const supabase = await getClient();
-  const payload = (await req.json()) as MetricPayload;
-  return handleEvaluationQuality(supabase, payload);
+  const body = await req.json();
+  return handleEvaluationQuality(req, {
+    evaluationTime: body.evaluationTime,
+    promptSimilarity: body.promptSimilarity,
+    confidenceScore: body.confidenceScore,
+  });
 }
 
 export async function GET() {

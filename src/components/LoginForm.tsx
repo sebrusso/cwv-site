@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useUser } from "@/contexts/UserContext";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getAuthErrorMessage, isDevelopment } from "@/lib/auth-utils";
+import { getAuthErrorMessage, isDevelopment } from "@/lib/auth-utils-client";
 
 interface LoginFormProps {
   onClose?: () => void;

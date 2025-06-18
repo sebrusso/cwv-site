@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { isHybridAuthMode } from "@/lib/auth-utils-client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextPane } from "@/components/TextPane";
@@ -247,7 +248,9 @@ export function HumanEvaluationArena() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, user, isLoading]);
 
-  if (!user && !isLoading) {
+  // In hybrid mode, both authenticated and anonymous users can evaluate
+  // Only block if not loading and no user in non-hybrid mode
+  if (!isLoading && !user && !isHybridAuthMode()) {
     return (
       <div className="text-center py-10">
         <p className="mb-4">You must be logged in to evaluate.</p>

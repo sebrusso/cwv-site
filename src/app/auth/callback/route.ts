@@ -8,6 +8,16 @@ async function handleAuthCallback(
   redirect: string | null,
   origin: string
 ) {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // If the user is in a password recovery flow, redirect them to the update password page.
+  if (session?.user?.aud === 'authenticated' && code) {
+    // This indicates a password recovery session.
+    const redirectUrl = new URL('/auth/update-password', origin);
+    redirectUrl.searchParams.set('token', code); // Forward the token
+    return NextResponse.redirect(redirectUrl);
+  }
+
   if (code) {
     await supabase.auth.exchangeCodeForSession(code);
   }

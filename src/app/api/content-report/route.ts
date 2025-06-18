@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { handleApiAuth } from '@/lib/auth-utils';
@@ -26,29 +24,6 @@ async function handleContentReport(
 
 export async function POST(req: Request) {
   try {
-    const cookieStorePromise = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: async () => (await cookieStorePromise).getAll(),
-          setAll: async (
-            cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>
-          ) => {
-            try {
-              const store = await cookieStorePromise;
-              cookiesToSet.forEach(({ name, value, options }) => {
-                store.set(name, value, options as CookieOptions);
-              });
-            } catch {
-              // ignore
-            }
-          },
-        },
-      }
-    );
-
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!,
@@ -60,7 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
     
-    const { userId, isAuthenticated } = await handleApiAuth(supabase);
+    const { userId, isAuthenticated } = await handleApiAuth(req);
     
     if (!isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

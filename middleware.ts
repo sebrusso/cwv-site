@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // If authentication is disabled globally, skip all auth checks
+  // If authentication is completely disabled, skip all auth checks
   if (appConfig.disableAuthentication) {
     return response;
   }
@@ -67,46 +67,57 @@ export async function middleware(request: NextRequest) {
       error: sessionError
     } = await supabase.auth.getSession();
 
-    // If there's an auth error, clear cookies and redirect to login
+    // If there's an auth error, clear cookies and allow access in hybrid mode
     if (sessionError) {
       console.warn('Session error in middleware:', sessionError.message);
       
       // Clear auth cookies
-      response = NextResponse.redirect(new URL('/login', request.url));
       response.cookies.delete('supabase-auth-token');
       response.cookies.delete('supabase.auth.token');
       
+      // In hybrid mode, continue to app instead of redirecting to login
+      // Anonymous users can still access all features
       return response;
     }
 
-    const protectedPaths = ['/', '/model-evaluation', '/human-machine', '/dashboard'];
-    const isProtectedPath = protectedPaths.some((p) => 
+    // Check if this is an authentication-required path (admin/restricted pages only)
+    const authRequiredPaths = ['/admin', '/dashboard/admin'];
+    const isAuthRequiredPath = authRequiredPaths.some((p) => 
       request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith(`${p}/`)
     );
 
-    if (isProtectedPath && !session) {
+    // Only redirect to login for strictly authentication-required paths
+    if (isAuthRequiredPath && !session) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
+      loginUrl.searchParams.set('required', 'true'); // Indicate this is a required auth
       return NextResponse.redirect(loginUrl);
+    }
+
+    // Add headers to indicate authentication status for client-side
+    if (session) {
+      response.headers.set('x-user-authenticated', 'true');
+      response.headers.set('x-user-id', session.user.id);
+    } else {
+      response.headers.set('x-user-authenticated', 'false');
+      response.headers.set('x-user-anonymous', 'true');
     }
 
     return response;
   } catch (error) {
     console.error('Middleware auth error:', error);
     
-    // On any auth error, redirect to login
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
-    const redirectResponse = NextResponse.redirect(loginUrl);
+    // In hybrid mode, don't redirect on errors - let anonymous users continue
+    // Clear any problematic auth cookies but allow access
+    response.cookies.delete('supabase-auth-token');
+    response.cookies.delete('supabase.auth.token');
     
-    // Clear any problematic auth cookies
-    redirectResponse.cookies.delete('supabase-auth-token');
-    redirectResponse.cookies.delete('supabase.auth.token');
-    
-    return redirectResponse;
+    return response;
   }
 }
 
 export const config = {
-  matcher: ['/', '/model-evaluation/:path*', '/human-machine/:path*', '/dashboard/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };

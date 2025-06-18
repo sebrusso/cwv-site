@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import type { Subscription } from "@supabase/supabase-js";
-import { shouldBypassAuth, getMockAuthData } from "@/lib/auth-utils";
+import { shouldBypassAuth, getMockAuthData } from "@/lib/auth-utils-client";
 
 type UserProfile = {
   id: string;
@@ -40,6 +40,7 @@ type UserContextType = {
   ) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   incrementScore: () => Promise<void>;
   addViewedPrompt: (promptId: string) => Promise<void>;
@@ -171,7 +172,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [pathname, router, user?.email]);
 
   useEffect(() => {
-    // If authentication is disabled, set mock data and return early
+    // If authentication is completely disabled, set mock data and return early
     // This prevents Supabase from trying to refresh tokens or handle auth
     if (shouldBypassAuth()) {
       const mockData = getMockAuthData();
@@ -389,7 +390,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         await fetch('/api/activity-log', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'signup' }),
+          body: JSON.stringify({ activity_type: 'signup' }),
         });
       } catch (logErr) {
         console.error('Failed to record signup activity', logErr);
@@ -431,14 +432,57 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    // If authentication is disabled, do nothing
+    // If authentication is completely disabled, do nothing
     if (shouldBypassAuth()) {
+      console.log('SignOut: Auth is bypassed, doing nothing');
       return;
     }
 
+    console.log('SignOut: Starting sign out process, current user:', user?.email);
     setIsLoading(true);
-    await supabase.auth.signOut();
-    setIsLoading(false);
+    
+    try {
+      // Always attempt to sign out from Supabase (handles both real and mock sessions)
+      await supabase.auth.signOut();
+      console.log('SignOut: Supabase signOut completed');
+      
+      // Clear user state regardless of whether there was a real session
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      
+      // In hybrid mode, user becomes anonymous again
+      console.log('SignOut: User signed out, now in anonymous mode');
+    } catch (error) {
+      console.error('SignOut: Error during sign out:', error);
+      // Clear state anyway in case of errors
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+    } finally {
+      setIsLoading(false);
+      console.log('SignOut: Process completed, user should be null');
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        return { error: error as AuthError };
+      }
+      return { error: null };
+    } catch (err) {
+      console.error("Error updating password:", err);
+      const error =
+        err instanceof Error
+          ? ({ message: err.message } as AuthError)
+          : ({ message: "An unknown error occurred" } as AuthError);
+      return { error };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
@@ -553,6 +597,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     signInWithPassword,
     signUp,
     signOut,
+    updatePassword,
     updateProfile,
     incrementScore,
     addViewedPrompt,

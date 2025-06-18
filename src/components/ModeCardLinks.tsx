@@ -77,7 +77,7 @@ export default function ModeCardLinks() {
         </Card>
       )}
 
-      {config.enableDashboard && config.showDashboardLink && (
+      {config.showDashboardButton && config.enableDashboard && config.showDashboardLink && (
         <Card>
           <CardHeader>
             <CardTitle>Dashboard</CardTitle>

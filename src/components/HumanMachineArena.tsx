@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useEffect, useState, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { usePathname, useRouter } from "next/navigation";
+import { isHybridAuthMode } from "@/lib/auth-utils-client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextPane } from "@/components/TextPane";
@@ -74,7 +75,9 @@ export function HumanMachineArena() {
     loadPrompts();
   }, []);
 
-  if (!user && !isLoading) {
+  // In hybrid mode, both authenticated and anonymous users can evaluate
+  // Only block if not loading and no user in non-hybrid mode
+  if (!isLoading && !user && !isHybridAuthMode()) {
     return (
       <div className="text-center py-10">
         <p className="mb-4">You must be logged in to evaluate.</p>

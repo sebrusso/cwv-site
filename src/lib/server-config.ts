@@ -146,6 +146,10 @@ export function getDefaultReasoningEffort(): 'low' | 'medium' | 'high' {
   return config.models.defaultReasoningEffort as 'low' | 'medium' | 'high';
 }
 
+export const isAuthenticationDisabled = (): boolean => {
+  return getServerConfig().features.authentication.disableForAnonymous;
+};
+
 // Legacy interface for backward compatibility in server-side code
 export interface LegacyServerAppConfig {
   debugMode: boolean;

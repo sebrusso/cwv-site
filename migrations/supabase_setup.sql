@@ -429,3 +429,35 @@ CREATE INDEX IF NOT EXISTS idx_content_reports_content_id ON public.content_repo
 CREATE INDEX IF NOT EXISTS idx_user_activity_log_user_id ON public.user_activity_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_username ON public.profiles(username);
 
+-- =============================================
+-- Additional RLS Policies for Anonymous Access to Leaderboards
+-- =============================================
+
+-- These policies ensure that anonymous users can read leaderboard data
+-- even when not authenticated with Supabase
+
+-- Speed mode scores - allow public read access for leaderboards
+DROP POLICY IF EXISTS "Public read access for speed_mode_scores" ON public.speed_mode_scores;
+CREATE POLICY "Public read access for speed_mode_scores" ON public.speed_mode_scores 
+  FOR SELECT USING (true);
+
+-- Model comparisons - allow public read access for leaderboards  
+DROP POLICY IF EXISTS "Public read access for model_comparisons" ON public.model_comparisons;
+CREATE POLICY "Public read access for model_comparisons" ON public.model_comparisons 
+  FOR SELECT USING (true);
+
+-- Model evaluations - allow public read access for leaderboards
+DROP POLICY IF EXISTS "Public read access for model_evaluations" ON public.model_evaluations;
+CREATE POLICY "Public read access for model_evaluations" ON public.model_evaluations 
+  FOR SELECT USING (true);
+
+-- Human model evaluations - allow public read access for leaderboards
+DROP POLICY IF EXISTS "Public read access for human_model_evaluations" ON public.human_model_evaluations;
+CREATE POLICY "Public read access for human_model_evaluations" ON public.human_model_evaluations 
+  FOR SELECT USING (true);
+
+-- Evaluation quality metrics - allow public read access
+DROP POLICY IF EXISTS "Public read access for evaluation_quality_metrics" ON public.evaluation_quality_metrics;
+CREATE POLICY "Public read access for evaluation_quality_metrics" ON public.evaluation_quality_metrics 
+  FOR SELECT USING (true);
+

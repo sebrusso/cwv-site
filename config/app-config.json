@@ -9,8 +9,10 @@
   "features": {
     "authentication": {
       "enabled": true,
-      "disableForAnonymous": true,
-      "requireEmailConfirmation": false
+      "mode": "hybrid",
+      "disableForAnonymous": false,
+      "requireEmailConfirmation": false,
+      "allowAnonymousAccess": true
     },
     "dashboard": {
       "enabled": true,

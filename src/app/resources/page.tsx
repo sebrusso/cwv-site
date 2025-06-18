@@ -71,7 +71,7 @@ export default function ResourcesPage() {
         <h2 className="text-xl font-medium">Research Paper</h2>
         <a href="/paper.pdf">
           <Image
-            src="/paper-placeholder.svg"
+            src="/paper-clip.jpeg"
             alt="Paper preview"
             width={600}
             height={800}

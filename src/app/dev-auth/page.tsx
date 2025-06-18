@@ -30,61 +30,44 @@ export default function DevAuthPage() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Email Confirmation in Local Development</h2>
-        
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-          <h3 className="font-medium text-yellow-800 mb-2">⚠️ Email Delivery Issue</h3>
-          <p className="text-sm text-yellow-700 mb-3">
-            In local development, Supabase requires email confirmation but emails are not sent unless 
-            you configure an SMTP provider. This is a common issue.
-          </p>
-          
-          <h4 className="font-medium text-yellow-800 mb-2">Solutions:</h4>
-          <ol className="text-sm text-yellow-700 space-y-1 list-decimal list-inside">
-            <li>
-              <strong>For Testing:</strong> Use the Supabase Dashboard to manually confirm users
-            </li>
-            <li>
-              <strong>For Development:</strong> Configure Supabase auth settings to disable email confirmation
-            </li>
-            <li>
-              <strong>For Production:</strong> Set up a proper email service (SendGrid, etc.)
-            </li>
-          </ol>
-        </div>
-
+        <h2 className="text-lg font-semibold">Expected Behavior Test</h2>
         <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-          <h3 className="font-medium text-green-800 mb-2">✅ Quick Fix Instructions</h3>
-          <ol className="text-sm text-green-700 space-y-2 list-decimal list-inside">
-            <li>
-              Go to your Supabase project dashboard: <br />
-              <code className="bg-white px-2 py-1 rounded text-xs">
-                https://supabase.com/dashboard/project/huavbzsevepndkbgikoi
-              </code>
-            </li>
-            <li>Navigate to Authentication → Settings</li>
-            <li>Under &quot;Email Confirmation&quot;, toggle off &quot;Enable email confirmations&quot;</li>
-            <li>Save the changes</li>
-            <li>Try creating a new account - it should work immediately!</li>
+          <h3 className="font-medium text-green-800 mb-2">Correct Anonymous User Flow:</h3>
+          <ol className="text-sm text-green-700 space-y-1 list-decimal list-inside">
+            <li><strong>Visit homepage</strong> → Should see profile button with login form (no sign out button)</li>
+            <li><strong>Use website features</strong> → Should work normally without authentication</li>
+            <li><strong>See signup encouragement</strong> → Should see banners encouraging account creation</li>
+            <li><strong>After signing up/in</strong> → Should see profile info + sign out button</li>
+            <li><strong>After signing out</strong> → Should return to anonymous mode (login form in profile button)</li>
           </ol>
+        </div>
+        
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+          <h3 className="font-medium text-red-800 mb-2">Current Issue:</h3>
+          <p className="text-sm text-red-700">
+            Anonymous users are seeing a &quot;Sign out&quot; button when they should only see login/signup options.
+            This suggests mock user data is being set when it shouldn&apos;t be.
+          </p>
         </div>
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Current Authentication State</h2>
-        <AuthDebugPanel />
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Quick Actions</h2>
+        <h2 className="text-lg font-semibold">Debug Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link href="/auth/signup" className="p-4 border rounded-md hover:bg-gray-50">
-            <h3 className="font-medium">Test Signup</h3>
-            <p className="text-sm text-gray-600">Try creating a new account</p>
+          <Link 
+            href="/" 
+            className="block p-4 bg-gray-50 border rounded-md hover:bg-gray-100 transition-colors"
+          >
+            <h3 className="font-medium">Test Home Page</h3>
+            <p className="text-sm text-gray-600">Go to homepage and check profile button behavior</p>
           </Link>
-          <Link href="/login" className="p-4 border rounded-md hover:bg-gray-50">
-            <h3 className="font-medium">Test Login</h3>
-            <p className="text-sm text-gray-600">Try signing in</p>
+          
+          <Link 
+            href="/dashboard" 
+            className="block p-4 bg-gray-50 border rounded-md hover:bg-gray-100 transition-colors"
+          >
+            <h3 className="font-medium">Test Dashboard</h3>
+            <p className="text-sm text-gray-600">Check if dashboard shows anonymous encouragement</p>
           </Link>
         </div>
       </div>
@@ -100,14 +83,16 @@ export default function DevAuthPage() {
               </span>
             </div>
             <div>
+              <span className="font-medium">Mode:</span>
+              <span className="text-blue-600">
+                {config.disableAuthentication ? " Mock User Mode" : " Hybrid Mode"}
+              </span>
+            </div>
+            <div>
               <span className="font-medium">Debug Mode:</span>
               <span className={config.debugMode ? "text-green-600" : "text-gray-600"}>
                 {config.debugMode ? " On" : " Off"}
               </span>
-            </div>
-            <div>
-              <span className="font-medium">Site URL:</span>
-              <span className="text-gray-600"> {process.env.NEXT_PUBLIC_SITE_URL || "Not set"}</span>
             </div>
             <div>
               <span className="font-medium">Environment:</span>
@@ -116,6 +101,21 @@ export default function DevAuthPage() {
           </div>
         </div>
       </div>
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Instructions</h2>
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <ol className="text-sm text-yellow-800 space-y-2 list-decimal list-inside">
+            <li>Open browser dev tools console to see debug logs</li>
+            <li>Check the red dot on the profile button (AUTH = authenticated, ANON = anonymous)</li>
+            <li>Click the profile button and see what&apos;s displayed</li>
+            <li>If you see a sign out button for anonymous users, that&apos;s the bug</li>
+            <li>Try the &quot;Clear Auth State&quot; button in the debug panel if needed</li>
+          </ol>
+        </div>
+      </div>
+
+      <AuthDebugPanel />
 
       <div className="text-center">
         <Link href="/" className="text-blue-600 hover:underline">
