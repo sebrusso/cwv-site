@@ -14,7 +14,7 @@ try {
   loadEnv = () => ({ });
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode }: { mode: string }) => {
   // Load env file based on `mode` in the current working directory.
   // By default, `mode` is `test` when running vitest
   process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };

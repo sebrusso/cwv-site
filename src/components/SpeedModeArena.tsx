@@ -60,12 +60,19 @@ export function SpeedModeArena() {
   // Add refs for synchronized scrolling
   const leftTextRef = useRef<HTMLDivElement>(null);
   const rightTextRef = useRef<HTMLDivElement>(null);
+  const prefetching = useRef(false);
 
   const addToast = useToast();
   const { user, isLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
   // Don't auto-initialize - wait for user to start the game
+
+  // Prefetch a batch of stories when the component mounts or model changes
+  useEffect(() => {
+    prefetchSamples();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModel]);
 
   useEffect(() => {
     if (!timerActive) return;
@@ -95,84 +102,95 @@ export function SpeedModeArena() {
   }
 
   const startGame = async () => {
-    console.log('🏁 Starting speed mode game...');
-    setGameState('loading');
+    console.log("🏁 Starting speed mode game...");
+    setGameState("loading");
     setTimeLeft(DURATION);
     setCorrectCount(0);
     setTotalGuesses(0);
     setCurrentStreak(0);
     setLongestStreak(0);
-    
-    // Start prefetching in the background
-    prefetchSamples();
-    
-    // Load the first sample
-    await fetchSample();
-    
-    // Once first sample is ready, start the timer and set to playing
-    setGameState('playing');
-    setTimerActive(true);
+
+    // Prefetch samples first so we have AI text ready before starting
+    await prefetchSamples();
+
+    // Load the first sample (should be instantaneous if prefetch succeeded)
+    const ok = await fetchSample();
+
+    if (ok) {
+      setGameState("playing");
+      setTimerActive(true);
+    } else {
+      setGameState("setup");
+      addToast("Failed to load stories. Please try again.", "error");
+    }
   };
 
   const prefetchSamples = async () => {
-    console.log('🔄 Starting prefetch...');
+    if (prefetching.current || prefetchedSamples.length >= 5) return;
+    prefetching.current = true;
+    console.log("🔄 Starting prefetch...");
     try {
-      // Fetch multiple prompts to prefill
       const { data: flagged } = await supabase
         .from("content_reports")
         .select("content_id")
         .eq("content_type", "prompt")
         .eq("resolved", false);
-      
+
       const excluded = (flagged || []).map((r) => r.content_id);
       let query = supabase
         .from("writingprompts-pairwise-test")
         .select("id,prompt,chosen")
-        .limit(10); // Prefetch 10 samples
-      
+        .limit(10);
+
       if (excluded.length > 0) {
         query = query.not("id", "in", `(${excluded.join(",")})`);
       }
-      
+
       const { data } = await query.order("id", { ascending: Math.random() > 0.5 });
-      
+
       if (data && data.length > 0) {
         setPrefetchedSamples(data);
-        
-        // Generate AI responses using bulk API for better performance
         try {
           const bulkResponse = await fetch("/api/speed-mode-bulk", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              prompts: data.slice(0, 5).map(p => ({ id: p.id, prompt: p.prompt })), // Limit to 5 for efficiency
+              prompts: data.slice(0, 5).map((p) => ({ id: p.id, prompt: p.prompt })),
               model: selectedModel,
             }),
           });
-          
+
           const bulkResult = await bulkResponse.json();
-          const newPrefetchedTexts: {[key: string]: string} = {};
-          
+          const newPrefetchedTexts: { [key: string]: string } = {};
+
           if (bulkResult.success && bulkResult.responses) {
-            bulkResult.responses.forEach((response: { id: string; text: string; success: boolean }) => {
-              if (response.success && response.text) {
-                newPrefetchedTexts[response.id] = response.text;
-              }
-            });
+            bulkResult.responses.forEach(
+              (response: { id: string; text: string; success: boolean }) => {
+                if (response.success && response.text) {
+                  newPrefetchedTexts[response.id] = response.text;
+                }
+              },
+            );
           }
-        
-          setPrefetchedTexts(prev => ({ ...prev, ...newPrefetchedTexts }));
-          console.log('🔄 Prefetch completed:', Object.keys(newPrefetchedTexts).length, 'samples');
+
+          setPrefetchedTexts((prev) => ({ ...prev, ...newPrefetchedTexts }));
+          console.log(
+            "🔄 Prefetch completed:",
+            Object.keys(newPrefetchedTexts).length,
+            "samples",
+          );
         } catch (bulkErr) {
-          console.error('Failed to bulk prefetch:', bulkErr);
+          console.error("Failed to bulk prefetch:", bulkErr);
         }
       }
     } catch (err) {
-      console.error('Failed to prefetch samples:', err);
+      console.error("Failed to prefetch samples:", err);
+    } finally {
+      prefetching.current = false;
     }
   };
 
-  const fetchSample = async () => {
+  const fetchSample = async (): Promise<boolean> => {
     console.log('🚀 fetchSample started');
     setLoading(true);
     setProgress(20);
@@ -185,8 +203,10 @@ export function SpeedModeArena() {
     setPendingSelectionSide(null);
 
     // Timer will be started by startGame() function
-    
+
     let row: PromptRow | null = null;
+
+    try {
     
     // Try to use prefetched samples first - only use samples that have AI responses
     const samplesWithAI = prefetchedSamples.filter(sample => prefetchedTexts[sample.id]);
@@ -195,7 +215,7 @@ export function SpeedModeArena() {
       const randomIndex = Math.floor(Math.random() * samplesWithAI.length);
       row = samplesWithAI[randomIndex];
       // Remove this sample from both prefetched lists
-      setPrefetchedSamples(prev => prev.filter(sample => sample.id !== row!.id));
+    setPrefetchedSamples((prev) => prev.filter((sample) => sample.id !== row!.id));
       console.log(`📦 Remaining prefetched: ${prefetchedSamples.length - 1} samples, ${Object.keys(prefetchedTexts).length - 1} AI responses`);
     } else {
       console.log('📋 Fetching flagged content...');
@@ -222,15 +242,15 @@ export function SpeedModeArena() {
     if (!row) {
       console.log('❌ No prompt found');
       setLoading(false);
-      return;
+      return false;
     }
     console.log('✅ Prompt ready, calling API...');
-    setCurrentPromptId(row.id);
-    setCurrentPrompt(row.prompt);
+    setCurrentPromptId(row!.id);
+    setCurrentPrompt(row!.prompt);
     setProgress(60);
     
     // Check if we already have AI text for this prompt
-    let aiText = prefetchedTexts[row.id];
+    let aiText = prefetchedTexts[row!.id];
     if (!aiText) {
       console.log('⚡ No prefetched AI response, generating live...');
       const aiRes = await fetch("/api/generate-openai", {
@@ -248,9 +268,9 @@ export function SpeedModeArena() {
     } else {
       console.log('📝 Using prefetched response');
       // Remove the used AI response from cache
-      setPrefetchedTexts(prev => {
+      setPrefetchedTexts((prev) => {
         const newTexts = { ...prev };
-        delete newTexts[row.id];
+        delete newTexts[row!.id];
         return newTexts;
       });
     }
@@ -258,15 +278,21 @@ export function SpeedModeArena() {
     setProgress(80);
     console.log('🎭 Setting up texts...');
     const isHumanLeft = Math.random() < 0.5;
-    setTexts({ left: isHumanLeft ? row.chosen : aiText, right: isHumanLeft ? aiText : row.chosen });
+    setTexts({ left: isHumanLeft ? row!.chosen : aiText, right: isHumanLeft ? aiText : row!.chosen });
     setMapping({ left: isHumanLeft ? "human" : "ai", right: isHumanLeft ? "ai" : "human" });
     setProgress(100);
     setLoading(false);
     console.log('✨ fetchSample completed');
-    
+
     // Reset scroll positions
     if (leftTextRef.current) leftTextRef.current.scrollTop = 0;
     if (rightTextRef.current) rightTextRef.current.scrollTop = 0;
+    return true;
+  } catch (err) {
+    console.error('Failed to fetch sample:', err);
+    setLoading(false);
+    return false;
+  }
   };
 
   const handleSelection = (side: "left" | "right") => {
