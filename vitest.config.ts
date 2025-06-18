@@ -1,7 +1,18 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
-import { loadEnv } from "vite";
+import { createRequire } from "module";
+
+let loadEnv: (mode: string, envDir: string) => Record<string, string>;
+
+try {
+  // Dynamically load from 'vite' if available
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const require = createRequire(import.meta.url);
+  loadEnv = require("vite").loadEnv;
+} catch {
+  loadEnv = () => ({ });
+}
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.

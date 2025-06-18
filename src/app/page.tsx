@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ModeCardLinks from "@/components/ModeCardLinks";
 import { authors } from "@/lib/authors";
-import { SignupCTA } from "@/components/SignupCTA";
 import { SignupEncouragement } from "@/components/SignupEncouragement";
 
 export default function HomePage() {
@@ -30,8 +29,6 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
-
-      <SignupCTA />
 
       <SignupEncouragement trigger="banner" />
 
