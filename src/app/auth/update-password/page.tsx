@@ -95,7 +95,7 @@ function UpdatePasswordForm() {
   );
 }
 
-export default function UpdatePasswordPage() {
+function UpdatePasswordContent() {
   const searchParams = useSearchParams();
   const hasToken = searchParams.get('token'); // Supabase sends a token in the URL
 
@@ -109,17 +109,23 @@ export default function UpdatePasswordPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<div>Loading...</div>}>
-            {hasToken ? (
-              <UpdatePasswordForm />
-            ) : (
-              <p className="text-center text-red-600">
-                Invalid or expired password reset link. Please request a new one.
-              </p>
-            )}
-          </Suspense>
+          {hasToken ? (
+            <UpdatePasswordForm />
+          ) : (
+            <p className="text-center text-red-600">
+              Invalid or expired password reset link. Please request a new one.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function UpdatePasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <UpdatePasswordContent />
+    </Suspense>
   );
 } 
