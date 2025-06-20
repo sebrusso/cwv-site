@@ -126,14 +126,15 @@ export default function MvpPage() {
               <p className="text-sm text-green-600 font-medium">
                 ✅ Email registered successfully!
               </p>
-              <Link href={downloadUrl} target="_blank" rel="noopener noreferrer">
+              <Link href="https://github.com/drfein/LitBench" target="_blank" rel="noopener noreferrer">
                 <Button className="w-full">
-                  📥 Download Dataset
+                  📥 Access Dataset & Code
                 </Button>
               </Link>
-              <p className="text-xs text-muted-foreground">
-                Dataset includes training and evaluation sets with comprehensive metadata.
-              </p>
+              <div className="text-xs text-muted-foreground space-y-2">
+                <p>Training set and full codebase available on GitHub.</p>
+                <p><strong>Test Set:</strong> Use the rehydration script to collect test examples directly from Reddit API (1-2 hours due to rate limits).</p>
+              </div>
             </div>
           )}
         </div>
