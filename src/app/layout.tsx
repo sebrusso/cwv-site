@@ -8,7 +8,7 @@ import { NavigationBar } from "@/components/NavigationBar";
 import { OnboardingDebugPanel } from "@/components/OnboardingDebugPanel";
 import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import { PageViewLogger } from "@/components/PageViewLogger";
-import { serverConfig as config } from "@/lib/server-config";
+import { getServerConfig } from "@/lib/server-config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,6 +33,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const config = getServerConfig();
   return (
     <html lang="en">
       <body
@@ -42,10 +43,10 @@ export default function RootLayout({
           <UserProvider>
             <PageViewLogger />
             <main className="min-h-screen p-4 sm:p-6 lg:p-8">
-              <NavigationBar />
+              {!config.features.mvpMode && <NavigationBar />}
               {children}
             </main>
-            {config.debugMode && (
+              {config.app.debugMode && (
               <>
                 <OnboardingDebugPanel />
                 <AuthDebugPanel />

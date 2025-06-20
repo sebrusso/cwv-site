@@ -50,6 +50,7 @@ export interface ServerAppConfig {
       enableDarkMode: boolean;
       defaultTheme: string;
     };
+    mvpMode: boolean;
   };
   models: {
     defaultProvider: string;

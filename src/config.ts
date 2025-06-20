@@ -12,6 +12,7 @@ export interface AppConfig {
   showDashboardButton: boolean;
   showSpeedModeToggle: boolean;
   showScoreDisplay: boolean;
+  mvpMode: boolean;
 }
 
 // Configuration values - these should match your config/app-config.json
@@ -30,6 +31,7 @@ export const config: AppConfig = {
   showDashboardButton: false,
   showSpeedModeToggle: false,
   showScoreDisplay: false,
+  mvpMode: false,
 };
 
 export default config;
