@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
-export async function handleRequest(req: Request) {
+async function handleRequest(req: Request) {
   try {
     const { email } = await req.json();
     if (!email) {
