@@ -67,6 +67,14 @@ export default function HomePage() {
         </p>
       </section>
 
+      <section className="text-center space-y-2">
+        <h2 className="text-xl font-medium">Upcoming Features</h2>
+        <p className="text-sm text-muted-foreground">
+          Human vs Machine comparisons, Model vs Model battles, and detection
+          tasks will launch soon.
+        </p>
+      </section>
+
       <footer className="text-center text-sm text-muted-foreground space-y-1">
         <p>Authors: {authors.join(', ')}</p>
         <p>Autonomous Agents Lab at Stanford (Nick Haber, PI)</p>
