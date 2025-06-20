@@ -1,6 +1,6 @@
 {
   "setup": {
-    "script": "./scripts/setup.sh",
+    "script": "./setup.sh",
     "timeout": 300
   },
   "environment": {
