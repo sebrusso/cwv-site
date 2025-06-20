@@ -34,7 +34,7 @@
       "enableDarkMode": false,
       "defaultTheme": "light"
     },
-    "mvpMode": true
+    "mvpMode": false
   },
   
   "models": {
