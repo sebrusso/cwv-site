@@ -3,8 +3,14 @@ import { Button } from "@/components/ui/button";
 import ModeCardLinks from "@/components/ModeCardLinks";
 import { authors } from "@/lib/authors";
 import { SignupEncouragement } from "@/components/SignupEncouragement";
+import MvpPage from "@/components/MvpPage";
+import { getServerConfig } from "@/lib/server-config";
 
 export default function HomePage() {
+  const config = getServerConfig();
+  if (config.features.mvpMode) {
+    return <MvpPage />;
+  }
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <section className="text-center space-y-4">
@@ -30,7 +36,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <SignupEncouragement trigger="banner" />
+      {!config.features.mvpMode && <SignupEncouragement trigger="banner" />}
 
       <div className="flex justify-center gap-4">
         <Link href="/resources">

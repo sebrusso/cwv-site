@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/contexts/UserContext";
 import { shouldEncourageSignup } from "@/lib/auth-utils-client";
+import { clientConfig as config } from "@/lib/config-client";
 import { LoginForm } from "./LoginForm";
 import { 
   User, 
@@ -23,10 +24,10 @@ interface SignupEncouragementProps {
   showDismiss?: boolean;
 }
 
-export function SignupEncouragement({ 
-  trigger = 'banner', 
+export function SignupEncouragement({
+  trigger = 'banner',
   onDismiss,
-  showDismiss = true 
+  showDismiss = true
 }: SignupEncouragementProps) {
   const { user } = useUser();
   const [showLoginForm, setShowLoginForm] = useState(false);
@@ -37,6 +38,11 @@ export function SignupEncouragement({
     // This effect runs only on the client, after the component has mounted.
     setIsClient(true);
   }, []);
+
+  // Hide entirely in MVP mode
+  if (config.mvpMode) {
+    return null;
+  }
 
   // Don't show if user is authenticated, component is dismissed, or we are on the server.
   if (!isClient || !shouldEncourageSignup(user) || isDismissed) {

@@ -33,7 +33,8 @@
       "showHelpButton": true,
       "enableDarkMode": false,
       "defaultTheme": "light"
-    }
+    },
+    "mvpMode": true
   },
   
   "models": {

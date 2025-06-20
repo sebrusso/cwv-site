@@ -47,6 +47,7 @@ export interface AppConfig {
       enableDarkMode: boolean;
       defaultTheme: string;
     };
+    mvpMode: boolean;
   };
   models: {
     defaultProvider: string;

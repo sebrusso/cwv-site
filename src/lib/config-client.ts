@@ -14,6 +14,7 @@ export interface ClientConfig {
   showDashboardButton: boolean;
   showSpeedModeToggle: boolean;
   showScoreDisplay: boolean;
+  mvpMode: boolean;
 }
 
 // Default client configuration - these values should match app-config.json defaults
@@ -31,6 +32,7 @@ export const clientConfig: ClientConfig = {
   showDashboardButton: false,
   showSpeedModeToggle: false,
   showScoreDisplay: false,
+  mvpMode: false,
 };
 
 // Legacy export for backward compatibility
