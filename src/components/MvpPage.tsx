@@ -61,7 +61,7 @@ export default function MvpPage() {
 
       {/* Key Contributions */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-semibold text-center">Key Findings</h2>
+        <h2 className="text-2xl font-semibold text-center">Key Contributions</h2>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="text-center space-y-2">
             <div className="text-3xl font-bold text-primary">43k+</div>
