@@ -36,7 +36,7 @@ export default function MvpPage() {
         throw new Error(data.error || "Failed to request dataset");
       }
 
-      setDownloadUrl(data.url);
+      setDownloadUrl("github");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

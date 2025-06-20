@@ -50,12 +50,7 @@ async function handleRequest(req: Request) {
     await admin.from('dataset_download_emails').insert({ email });
     await admin.from('dataset_downloads').insert({ user_id: userId });
 
-    const url = process.env.DATASET_URL;
-    if (!url) {
-      return NextResponse.json({ error: 'Dataset URL not configured' }, { status: 500 });
-    }
-
-    return NextResponse.json({ url });
+    return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Error in request-dataset API:', err);
     return NextResponse.json({ error: 'Invalid request' }, { status: 500 });
