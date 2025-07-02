@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 // import { Inter } from "next/font/google"; // Old import
 import { inter } from "@/lib/fonts"; // New import for local Inter
@@ -24,9 +24,30 @@ const geistMono = Geist_Mono({
 // const inter = Inter({ subsets: ["latin"] }); // Old initialization
 
 export const metadata: Metadata = {
-  title: "Writing Evaluation Arena",
-  description: "Evaluate writing quality from humans and AI models",
+  title: "LitBench - Writing Evaluation Arena",
+  description: "Benchmark and dataset for automated creative writing evaluation, featuring thousands of pairwise, human-labeled story comparisons",
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' }
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
+    ]
+  },
+  manifest: '/site.webmanifest',
+  other: {
+    'msapplication-TileColor': '#da532c',
+    'msapplication-config': '/browserconfig.xml'
+  }
 };
+
+export function generateViewport(): Viewport {
+  return {
+    themeColor: '#ffffff'
+  }
+}
 
 export default function RootLayout({
   children,

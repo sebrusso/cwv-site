@@ -49,7 +49,7 @@ export default function MvpPage() {
       {/* Header Section */}
       <section className="text-center space-y-6">
         <h1 className="text-4xl font-bold tracking-tight">
-          LitBench
+          LitBench: A Benchmark and Dataset for Reliable Evaluation of Creative Writing
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           LitBench is a benchmark and dataset aimed at improving automated creative writing evaluation, 
@@ -81,7 +81,7 @@ export default function MvpPage() {
       {/* Actions Section */}
       <section className="space-y-8">
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Link href="/paper.pdf">
+          <Link href="https://arxiv.org/abs/2507.00769" target="_blank" rel="noopener noreferrer">
             <Button size="lg" className="w-full sm:w-auto">
               📄 Read the Paper
             </Button>
@@ -90,15 +90,14 @@ export default function MvpPage() {
 
         {/* Dataset Download */}
         <div className="bg-muted/50 rounded-lg p-6 max-w-xl mx-auto">
-          <h3 className="text-xl font-semibold mb-4 text-center">Download Dataset</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center">
-            Access our comprehensive dataset of human-labeled story comparisons. 
-            Enter your email to receive the download link.
-          </p>
+          <h3 className="text-xl font-semibold mb-6 text-center">Access Dataset</h3>
           
           {!downloadUrl ? (
-            <form onSubmit={handleDatasetRequest} className="space-y-4">
-              <div>
+            <>
+              <p className="text-sm text-muted-foreground mb-6 text-center">
+                Enter your email address to access the dataset and resources.
+              </p>
+              <form onSubmit={handleDatasetRequest} className="space-y-4">
                 <input
                   type="email"
                   value={email}
@@ -107,33 +106,48 @@ export default function MvpPage() {
                   className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   required
                 />
-              </div>
-              
-              {error && (
-                <p className="text-sm text-destructive text-center">{error}</p>
-              )}
-              
-              <Button 
-                type="submit" 
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                {isSubmitting ? "Processing..." : "Get Dataset"}
-              </Button>
-            </form>
+                
+                {error && (
+                  <p className="text-sm text-destructive text-center">{error}</p>
+                )}
+                
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="w-full"
+                >
+                  {isSubmitting ? "Processing..." : "Access Dataset"}
+                </Button>
+              </form>
+            </>
           ) : (
-            <div className="text-center space-y-4">
-              <p className="text-sm text-green-600 font-medium">
+            <div className="space-y-6">
+              <p className="text-sm text-green-600 font-medium text-center">
                 ✅ Email registered successfully!
               </p>
-              <Link href="https://github.com/drfein/LitBench" target="_blank" rel="noopener noreferrer">
-                <Button className="w-full">
-                  📥 Access Dataset & Code
-                </Button>
-              </Link>
-              <div className="text-xs text-muted-foreground space-y-2">
-                <p>Training set and full codebase available on GitHub.</p>
-                <p><strong>Test Set:</strong> Use the rehydration script to collect test examples directly from Reddit API (1-2 hours due to rate limits).</p>
+              
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  Access training data and rehydration code from <strong>GitHub</strong>, and get comment IDs from our <strong>HuggingFace</strong> collection.
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Link href="https://github.com/drfein/LitBench" target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full">
+                      Code (Github)
+                    </Button>
+                  </Link>
+                  
+                  <Link href="https://huggingface.co/collections/SAA-Lab/litbench-68267b5da3aafe58f9e43461" target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full">
+                      Dataset (Huggingface)
+                    </Button>
+                  </Link>
+                </div>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  <strong>Note:</strong> Rehydration takes 1-2 hours due to Reddit API rate limits.
+                </p>
               </div>
             </div>
           )}
@@ -147,18 +161,11 @@ export default function MvpPage() {
           We're actively developing additional features that will be released in the coming weeks and months:
         </p>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
           <div className="bg-background rounded-md p-4 space-y-2">
             <h3 className="font-medium">Human vs Machine Detection</h3>
             <p className="text-sm text-muted-foreground">
               Interactive arena for distinguishing between human and AI-written stories
-            </p>
-          </div>
-          
-          <div className="bg-background rounded-md p-4 space-y-2">
-            <h3 className="font-medium">Human vs Human Arena</h3>
-            <p className="text-sm text-muted-foreground">
-              Compare stories written by different human authors
             </p>
           </div>
           
@@ -170,23 +177,9 @@ export default function MvpPage() {
           </div>
           
           <div className="bg-background rounded-md p-4 space-y-2">
-            <h3 className="font-medium">Model Evaluation Suite</h3>
-            <p className="text-sm text-muted-foreground">
-              Comprehensive testing of AI creative writing capabilities
-            </p>
-          </div>
-          
-          <div className="bg-background rounded-md p-4 space-y-2">
             <h3 className="font-medium">Real-time Leaderboards</h3>
             <p className="text-sm text-muted-foreground">
               Live rankings and performance metrics
-            </p>
-          </div>
-          
-          <div className="bg-background rounded-md p-4 space-y-2">
-            <h3 className="font-medium">Advanced Analytics</h3>
-            <p className="text-sm text-muted-foreground">
-              Detailed insights into creative writing patterns
             </p>
           </div>
         </div>
@@ -195,7 +188,11 @@ export default function MvpPage() {
       {/* Footer */}
       <footer className="text-center text-sm text-muted-foreground space-y-2 pt-8 border-t">
         <p>Authors: {authors.join(', ')}</p>
-        <p>Autonomous Agents Lab at Stanford (Nick Haber, PI)</p>
+        <p>
+          <Link href="https://www.autonomousagents.stanford.edu/" target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Autonomous Agents Lab
+          </Link> at Stanford (Nick Haber, PI)
+        </p>
         <p className="text-xs">
           LitBench paper submitted at NeurIPS 2025 • Dataset & code MIT-licensed
         </p>
