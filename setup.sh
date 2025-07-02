@@ -37,10 +37,12 @@ fi
 # Install Python packages required for auxiliary scripts
 echo "Installing Python dependencies..."
 if [ -f requirements.txt ]; then
-  pip install --no-cache-dir -r requirements.txt
+  # Use --break-system-packages for isolated container environment
+  pip install --no-cache-dir --break-system-packages -r requirements.txt
 else
   # Install essential packages for the project's data handling scripts
-  pip install --no-cache-dir pandas datasets pyarrow supabase python-dotenv
+  # Use --break-system-packages since this is an isolated container environment
+  pip install --no-cache-dir --break-system-packages pandas datasets pyarrow supabase python-dotenv
 fi
 
 # Verify critical installations
@@ -68,6 +70,14 @@ if pnpm build --help > /dev/null 2>&1; then
     echo "✅ pnpm build available"
 else
     echo "⚠️  pnpm build command may not be configured"
+fi
+
+# Verify Python packages are available
+echo "Verifying Python packages..."
+if python3 -c "import pandas, datasets, pyarrow, supabase, dotenv" 2>/dev/null; then
+    echo "✅ Python dependencies available"
+else
+    echo "⚠️  Some Python dependencies may not be available"
 fi
 
 echo "✅ Setup complete - Cursor background agent environment ready"
