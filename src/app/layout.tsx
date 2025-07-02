@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 // const inter = Inter({ subsets: ["latin"] }); // Old initialization
 
 export const metadata: Metadata = {
-  title: "Writing Evaluation Arena",
+  title: "LitBench",
   description: "Evaluate writing quality from humans and AI models",
 };
 

@@ -49,7 +49,7 @@ export default function MvpPage() {
       {/* Header Section */}
       <section className="text-center space-y-6">
         <h1 className="text-4xl font-bold tracking-tight">
-          LitBench
+          LitBench: A Benchmark and Dataset for Reliable Evaluation of Creative Writing
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           LitBench is a benchmark and dataset aimed at improving automated creative writing evaluation, 
