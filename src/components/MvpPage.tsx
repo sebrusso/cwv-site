@@ -81,7 +81,7 @@ export default function MvpPage() {
       {/* Actions Section */}
       <section className="space-y-8">
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Link href="/paper.pdf">
+          <Link href="https://arxiv.org/abs/2507.00769" target="_blank" rel="noopener noreferrer">
             <Button size="lg" className="w-full sm:w-auto">
               📄 Read the Paper
             </Button>
