@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { authors } from "@/lib/authors";
 
@@ -48,9 +49,6 @@ export default function MvpPage() {
     <div className="max-w-4xl mx-auto space-y-12 px-4 py-8">
       {/* Header Section */}
       <section className="text-center space-y-8">
-        {/* Top line */}
-        <div className="w-full border-t border-foreground/20"></div>
-        
         {/* Title and Authors */}
         <div className="space-y-4">
           <h1 className="text-4xl font-bold tracking-tight">
@@ -61,11 +59,11 @@ export default function MvpPage() {
           {/* Authors */}
           <div className="space-y-3">
             <div className="text-base text-foreground/80 space-y-1">
-              <div>Daniel Fein*&nbsp;&nbsp;Sebastian Russo*&nbsp;&nbsp;Violet Xiang*&nbsp;&nbsp;Kabir Jolly</div>
-              <div>Rafael Rafailov&nbsp;&nbsp;Nick Haber</div>
+              <div>Daniel Fein<sup>1</sup>&nbsp;&nbsp;Sebastian Russo<sup>1</sup>&nbsp;&nbsp;Violet Xiang<sup>1</sup></div>
+              <div>Kabir Jolly<sup>1</sup>&nbsp;&nbsp;Rafael Rafailov<sup>1</sup>&nbsp;&nbsp;Nick Haber<sup>1</sup></div>
             </div>
             <div className="text-sm text-foreground/70">
-              Stanford University
+              <sup>1</sup>Stanford University
             </div>
           </div>
         </div>
@@ -73,7 +71,7 @@ export default function MvpPage() {
         {/* Bottom line */}
         <div className="w-full border-t border-foreground/20"></div>
         
-        <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+        <p className="text-lg text-muted-foreground max-w-3xl mx-auto text-center leading-relaxed">
           LitBench is a benchmark and dataset aimed at improving automated creative writing evaluation, 
           featuring thousands of pairwise, human-labeled story comparisons. We apply preference distillation 
           techniques to fine-tune LLMs, and the resultant Bradley–Terry and generative reward models trained 
@@ -102,63 +100,77 @@ export default function MvpPage() {
 
       {/* Actions Section */}
       <section className="space-y-8">
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Link href="/paper.pdf">
-            <Button size="lg" className="w-full sm:w-auto">
-              📄 Read the Paper
-            </Button>
-          </Link>
-        </div>
-
-        {/* Dataset Download */}
-        <div className="bg-muted/50 rounded-lg p-6 max-w-xl mx-auto">
-          <h3 className="text-xl font-semibold mb-4 text-center">Download Dataset</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center">
-            Access our comprehensive dataset of human-labeled story comparisons. 
-            Enter your email to receive the download link.
-          </p>
+        <div className="flex flex-col md:flex-row gap-6 items-stretch justify-center">
+          {/* Paper View Button */}
+          <div className="w-full md:w-1/3">
+            <Link href="/paper.pdf" className="block h-full">
+              <div className="h-full w-full flex flex-col items-center justify-start gap-6 py-6 px-4 border border-gray-200 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <div className="pt-4">
+                  <span className="text-xl font-bold hover:text-primary transition-colors">View Paper</span>
+                </div>
+                <div className="relative w-full h-28 flex items-center justify-center mt-2">
+                  <Image 
+                    src="/arxiv.png" 
+                    alt="arXiv" 
+                    fill
+                    sizes="(max-width: 768px) 100vw, 200px"
+                    style={{objectFit: "contain"}}
+                    priority
+                    quality={100}
+                  />
+                </div>
+              </div>
+            </Link>
+          </div>
           
-          {!downloadUrl ? (
-            <form onSubmit={handleDatasetRequest} className="space-y-4">
-              <div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  required
-                />
-              </div>
-              
-              {error && (
-                <p className="text-sm text-destructive text-center">{error}</p>
-              )}
-              
-              <Button 
-                type="submit" 
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                {isSubmitting ? "Processing..." : "Get Dataset"}
-              </Button>
-            </form>
-          ) : (
-            <div className="text-center space-y-4">
-              <p className="text-sm text-green-600 font-medium">
-                ✅ Email registered successfully!
+          {/* Dataset Download */}
+          <div className="bg-white rounded-lg p-6 w-full md:w-2/3 border border-gray-200 shadow-sm flex flex-col justify-start">
+            <div className="pt-4">
+              <h3 className="text-xl font-semibold text-center">Download Dataset</h3>
+              <p className="text-sm text-muted-foreground mt-3 mb-6 text-center">
+                Access our comprehensive dataset of human-labeled story comparisons. 
+                Enter your email to get access.
               </p>
-              <Link href="https://github.com/drfein/LitBench" target="_blank" rel="noopener noreferrer">
-                <Button className="w-full">
-                  📥 Access Dataset & Code
-                </Button>
-              </Link>
-              <div className="text-xs text-muted-foreground space-y-2">
-                <p>Training set and full codebase available on GitHub.</p>
-                <p><strong>Test Set:</strong> Use the rehydration script to collect test examples directly from Reddit API (1-2 hours due to rate limits).</p>
-              </div>
             </div>
-          )}
+            
+            {!downloadUrl ? (
+              <form onSubmit={handleDatasetRequest} className="space-y-6 mt-2">
+                <div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email address"
+                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    required
+                  />
+                </div>
+                
+                {error && (
+                  <p className="text-sm text-destructive text-center">{error}</p>
+                )}
+                
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="w-full"
+                >
+                  {isSubmitting ? "Processing..." : "Get Dataset"}
+                </Button>
+              </form>
+            ) : (
+              <div className="text-center space-y-6 mt-2">
+                <p className="text-sm text-green-600 font-medium">
+                  ✅ Email registered successfully!
+                </p>
+                <Link href="https://github.com/drfein/LitBench" target="_blank" rel="noopener noreferrer">
+                  <Button className="w-full">
+                    📥 Access Dataset & Code
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
