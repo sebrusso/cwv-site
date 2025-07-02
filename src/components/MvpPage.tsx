@@ -147,18 +147,11 @@ export default function MvpPage() {
           We're actively developing additional features that will be released in the coming weeks and months:
         </p>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
           <div className="bg-background rounded-md p-4 space-y-2">
             <h3 className="font-medium">Human vs Machine Detection</h3>
             <p className="text-sm text-muted-foreground">
               Interactive arena for distinguishing between human and AI-written stories
-            </p>
-          </div>
-          
-          <div className="bg-background rounded-md p-4 space-y-2">
-            <h3 className="font-medium">Human vs Human Arena</h3>
-            <p className="text-sm text-muted-foreground">
-              Compare stories written by different human authors
             </p>
           </div>
           
@@ -170,23 +163,9 @@ export default function MvpPage() {
           </div>
           
           <div className="bg-background rounded-md p-4 space-y-2">
-            <h3 className="font-medium">Model Evaluation Suite</h3>
-            <p className="text-sm text-muted-foreground">
-              Comprehensive testing of AI creative writing capabilities
-            </p>
-          </div>
-          
-          <div className="bg-background rounded-md p-4 space-y-2">
             <h3 className="font-medium">Real-time Leaderboards</h3>
             <p className="text-sm text-muted-foreground">
               Live rankings and performance metrics
-            </p>
-          </div>
-          
-          <div className="bg-background rounded-md p-4 space-y-2">
-            <h3 className="font-medium">Advanced Analytics</h3>
-            <p className="text-sm text-muted-foreground">
-              Detailed insights into creative writing patterns
             </p>
           </div>
         </div>
