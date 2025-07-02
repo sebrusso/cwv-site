@@ -1,6 +1,8 @@
 export const authors = [
-  'Sebastian Russo',
-  'Kabir Jolly',
   'Daniel Fein',
+  'Sebastian Russo',
   'Violet Xiang',
+  'Kabir Jolly',
+  'Rafael Rafailov',
+  'Nick Haber',
 ];
