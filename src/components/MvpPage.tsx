@@ -195,7 +195,16 @@ export default function MvpPage() {
       {/* Footer */}
       <footer className="text-center text-sm text-muted-foreground space-y-2 pt-8 border-t">
         <p>Authors: {authors.join(', ')}</p>
-        <p>Autonomous Agents Lab at Stanford (Nick Haber, PI)</p>
+        <p>
+          <Link 
+            href="https://www.autonomousagents.stanford.edu/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="underline hover:text-foreground transition-colors"
+          >
+            Autonomous Agents Lab at Stanford (Nick Haber, PI)
+          </Link>
+        </p>
         <p className="text-xs">
           LitBench paper submitted at NeurIPS 2025 • Dataset & code MIT-licensed
         </p>
