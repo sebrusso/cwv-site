@@ -47,10 +47,32 @@ export default function MvpPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-12 px-4 py-8">
       {/* Header Section */}
-      <section className="text-center space-y-6">
-        <h1 className="text-4xl font-bold tracking-tight">
-          LitBench
-        </h1>
+      <section className="text-center space-y-8">
+        {/* Top line */}
+        <div className="w-full border-t border-foreground/20"></div>
+        
+        {/* Title and Authors */}
+        <div className="space-y-4">
+          <h1 className="text-4xl font-bold tracking-tight">
+            LitBench: A Benchmark and Dataset for Reliable<br />
+            Evaluation of Creative Writing
+          </h1>
+          
+          {/* Authors */}
+          <div className="space-y-3">
+            <div className="text-base text-foreground/80 space-y-1">
+              <div>Daniel Fein*&nbsp;&nbsp;Sebastian Russo*&nbsp;&nbsp;Violet Xiang*&nbsp;&nbsp;Kabir Jolly</div>
+              <div>Rafael Rafailov&nbsp;&nbsp;Nick Haber</div>
+            </div>
+            <div className="text-sm text-foreground/70">
+              Stanford University
+            </div>
+          </div>
+        </div>
+        
+        {/* Bottom line */}
+        <div className="w-full border-t border-foreground/20"></div>
+        
         <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           LitBench is a benchmark and dataset aimed at improving automated creative writing evaluation, 
           featuring thousands of pairwise, human-labeled story comparisons. We apply preference distillation 
