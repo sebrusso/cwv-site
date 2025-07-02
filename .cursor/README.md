@@ -32,6 +32,10 @@ The `setup.sh` script handles:
 - Verifying that all necessary tools are available
 - Ensuring the environment is ready for development
 
+### Python Environment Notes
+
+The setup script uses the `--break-system-packages` flag for pip installations to handle Ubuntu's externally-managed Python environment in the background agent containers. This is safe and appropriate for isolated container environments that get recreated for each agent session.
+
 ## Background Agent Features
 
 The background agent will have access to:
@@ -42,4 +46,8 @@ The background agent will have access to:
 
 ## Security Note
 
-The background agent requires read-write access to your GitHub repository to clone and push changes. It operates in an isolated Ubuntu environment and can auto-run terminal commands. 
+The background agent requires read-write access to your GitHub repository to clone and push changes. It operates in an isolated Ubuntu environment and can auto-run terminal commands.
+
+## Troubleshooting
+
+If you encounter Python dependency installation issues, ensure that the `--break-system-packages` flag is included in pip install commands within the setup script. This addresses the externally-managed environment restrictions in Ubuntu-based containers. 
