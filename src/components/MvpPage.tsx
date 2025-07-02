@@ -80,20 +80,29 @@ export default function MvpPage() {
       </section>
 
       {/* Key Contributions */}
-      <section className="space-y-6">
-        <h2 className="text-2xl font-semibold text-center">Key Contributions</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="text-center space-y-2">
+      <section className="text-center space-y-6">
+        <h2 className="text-2xl font-semibold">Key Contributions</h2>
+        
+        <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <div className="bg-white rounded-md p-4 space-y-2 border border-gray-200 shadow-sm">
             <div className="text-3xl font-bold text-primary">43k+</div>
-            <p className="text-sm text-muted-foreground">Human-labeled pairwise story comparisons in training set</p>
+            <p className="text-sm text-muted-foreground">
+              Human-labeled pairwise story comparisons in training set
+            </p>
           </div>
-          <div className="text-center space-y-2">
+          
+          <div className="bg-white rounded-md p-4 space-y-2 border border-gray-200 shadow-sm">
             <div className="text-3xl font-bold text-primary">2.5k</div>
-            <p className="text-sm text-muted-foreground">Held-out benchmark comparisons for evaluation</p>
+            <p className="text-sm text-muted-foreground">
+              Held-out benchmark comparisons for evaluation
+            </p>
           </div>
-          <div className="text-center space-y-2">
+          
+          <div className="bg-white rounded-md p-4 space-y-2 border border-gray-200 shadow-sm">
             <div className="text-3xl font-bold text-primary">Superior</div>
-            <p className="text-sm text-muted-foreground">Performance vs existing zero-shot evaluators</p>
+            <p className="text-sm text-muted-foreground">
+              Performance vs existing zero-shot evaluators
+            </p>
           </div>
         </div>
       </section>
